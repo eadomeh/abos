@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #0B141A;
+    color: #e2e8f0;
+  }
+}
+
+@layer utilities {
+  /* Premium charcoal background with teal glow + grid */
+  .abos-bg {
+    background-color: #0B141A;
+    background-image:
+      radial-gradient(ellipse 600px 400px at 100% 0%, rgba(13, 148, 136, 0.08), transparent 60%),
+      radial-gradient(ellipse 400px 300px at 0% 100%, rgba(16, 185, 129, 0.04), transparent 60%),
+      linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      32px 32px,
+      32px 32px;
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+    background-repeat: no-repeat, no-repeat, repeat, repeat;
+  }
+
+  /* Glassmorphism card */
+  .glass {
+    background: rgba(255, 255, 255, 0.025);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
