@@ -3,7 +3,7 @@ import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
 import type { Order, OrderItem, OrderStatus } from '@/types/database';
 import {
-  TrendingUp, ShoppingCart, Package, Users, Loader2,
+  TrendingUp, ShoppingCart, Loader2,
   BarChart3, ArrowUpRight, ArrowDownRight, Trophy, Receipt,
   Sparkles, Calendar,
 } from 'lucide-react';
@@ -25,15 +25,13 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [productCount, setProductCount] = useState(0);
-  const [customerCount, setCustomerCount] = useState(0);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('30d');
 
   const fetchData = useCallback(async () => {
     if (!activeBusiness) { setLoading(false); return; }
     setLoading(true);
 
-    const [ordersRes, prodCountRes, custCountRes] = await Promise.all([
+    const [ordersRes] = await Promise.all([
       supabase.from('orders')
         .select(`
           *,
@@ -41,8 +39,6 @@ export default function AnalyticsPage() {
         `)
         .eq('business_id', activeBusiness.id)
         .order('created_at', { ascending: true }),
-      supabase.from('products').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id),
-      supabase.from('customers').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id),
     ]);
 
     if (ordersRes.data) {
@@ -50,8 +46,6 @@ export default function AnalyticsPage() {
       const allItems = (ordersRes.data as unknown as Order[]).flatMap((o) => o.order_items ?? []);
       setOrderItems(allItems);
     }
-    setProductCount(prodCountRes.count ?? 0);
-    setCustomerCount(custCountRes.count ?? 0);
     setLoading(false);
   }, [activeBusiness]);
 

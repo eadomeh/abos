@@ -4,10 +4,10 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import type { BusinessMembership, BusinessRole } from '@/types/database';
 import {
-  Settings, Building2, Users, AlertTriangle, X, Loader2,
-  AlertCircle, Check, Pencil, Trash2, UserPlus, Shield,
+  Building2, Users, AlertTriangle, Loader2,
+  AlertCircle, Check, Trash2, UserPlus, Shield,
   Mail, Phone, MapPin, MessageCircle, ArrowRight, Crown,
-  Link2, Copy, ExternalLink, CheckCircle2, CircleDot,
+  Link2, Copy, CheckCircle2, CircleDot,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -181,7 +181,6 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
   currentUserId: string;
 }) {
   const [members, setMembers] = useState<BusinessMembership[]>([]);
-  const [memberEmails, setMemberEmails] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -199,14 +198,6 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
 
     if (data) {
       setMembers(data as BusinessMembership[]);
-      // Fetch emails from auth.users via the profiles or just use user_id
-      const emailsMap: Record<string, string> = {};
-      await Promise.all((data as BusinessMembership[]).map(async (m) => {
-        // We can't directly query auth.users, so we'll show user_id truncated
-        // In a real app you'd have a profiles table
-        emailsMap[m.user_id] = m.user_id;
-      }));
-      setMemberEmails(emailsMap);
     }
     setLoading(false);
   }, [businessId]);
@@ -342,7 +333,6 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
 
         <div className="space-y-2">
           {members.map((member) => {
-            const RoleIcon = roleConfig[member.role].icon;
             const isYou = member.user_id === currentUserId;
             return (
               <div key={member.id} className="flex items-center gap-3 p-3 glass rounded-xl">
@@ -460,7 +450,6 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     } else {
       setPhoneNumberId('');
       setWabaId('');
-      setVerifyToken('');
       await refreshBusinesses();
     }
     setLoading(false);

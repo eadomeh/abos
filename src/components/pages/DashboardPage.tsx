@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import {
   TrendingUp, Package, ShoppingCart, Users, Sparkles,
   ArrowUpRight, MessageCircle, MapPin, CheckCircle2,
-  ArrowRight, Phone, Check, Box,
+  ArrowRight, Phone, Check,
 } from 'lucide-react';
 
 interface DashboardPageProps {
