@@ -15,7 +15,6 @@ export interface Business {
   whatsapp_number: string | null;
   whatsapp_phone_number_id: string | null;
   whatsapp_waba_id: string | null;
-  whatsapp_verify_token: string | null;
   whatsapp_connected_at: string | null;
   whatsapp_business_name: string | null;
   country: string | null;

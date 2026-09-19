@@ -7,7 +7,7 @@ import {
   Building2, Users, AlertTriangle, Loader2,
   AlertCircle, Check, Trash2, UserPlus, Shield,
   Mail, Phone, MapPin, MessageCircle, ArrowRight, Crown,
-  Link2, Copy, CheckCircle2, CircleDot,
+  Copy, CheckCircle2, CircleDot,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -393,72 +393,102 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
 }
 
 function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boolean }) {
-  const { activeBusiness, refreshBusinesses } = useBusiness();
-  const [phoneNumberId, setPhoneNumberId] = useState(activeBusiness?.whatsapp_phone_number_id ?? '');
-  const [wabaId, setWabaId] = useState(activeBusiness?.whatsapp_waba_id ?? '');
-  const [saved, setSaved] = useState(false);
+  const { refreshBusinesses } = useBusiness();
+  const [phoneNumberId, setPhoneNumberId] = useState('');
+  const [wabaId, setWabaId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [connection, setConnection] = useState<{
+    phone_number_id: string;
+    waba_id: string;
+    display_phone_number: string | null;
+    verified_name: string | null;
+    quality_rating: string | null;
+    status: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const isConnected = !!activeBusiness?.whatsapp_phone_number_id;
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+  const webhookUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/whatsapp-webhook';
 
-  const handleSave = async (e: FormEvent) => {
+  const loadStatus = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+      body: { action: 'status', businessId },
+    });
+
+    if (invokeError) {
+      setError('Could not load WhatsApp connection status.');
+      setLoading(false);
+      return;
+    }
+
+    const next = data?.connection ?? null;
+    setConnection(next);
+    if (next) {
+      setPhoneNumberId(next.phone_number_id ?? '');
+      setWabaId(next.waba_id ?? '');
+    }
+    setLoading(false);
+  }, [businessId]);
+
+  useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  const handleConnect = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    setSaving(true);
 
-    const updateData: Record<string, string | null> = {};
-    if (phoneNumberId.trim()) updateData.whatsapp_phone_number_id = phoneNumberId.trim();
-    if (wabaId.trim()) updateData.whatsapp_waba_id = wabaId.trim();
-    if (phoneNumberId.trim() && !isConnected) updateData.whatsapp_connected_at = new Date().toISOString();
-    else if (!phoneNumberId.trim() && isConnected) updateData.whatsapp_connected_at = null;
+    const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+      body: {
+        action: 'connect',
+        businessId,
+        phoneNumberId: phoneNumberId.trim(),
+        wabaId: wabaId.trim(),
+        accessToken: accessToken.trim(),
+      },
+    });
 
-    const { error: updateError } = await supabase
-      .from('businesses')
-      .update(updateData)
-      .eq('id', businessId);
-
-    if (updateError) {
-      setError('Could not save WhatsApp settings. Please try again.');
-      setLoading(false);
-    } else {
-      setSaved(true);
-      setLoading(false);
-      await refreshBusinesses();
-      setTimeout(() => setSaved(false), 3000);
+    if (invokeError || !data?.success) {
+      setError(data?.details ?? data?.error ?? 'Could not connect WhatsApp.');
+      setSaving(false);
+      return;
     }
+
+    setConnection(data.connection);
+    setAccessToken('');
+    setSaving(false);
+    await refreshBusinesses();
   };
 
   const handleDisconnect = async () => {
-    setLoading(true);
+    setSaving(true);
     setError(null);
-    const { error: updateError } = await supabase
-      .from('businesses')
-      .update({
-        whatsapp_phone_number_id: null,
-        whatsapp_waba_id: null,
-        whatsapp_verify_token: null,
-        whatsapp_connected_at: null,
-        whatsapp_business_name: null,
-      })
-      .eq('id', businessId);
+    const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+      body: { action: 'disconnect', businessId },
+    });
 
-    if (updateError) {
-      setError('Could not disconnect WhatsApp. Please try again.');
-    } else {
-      setPhoneNumberId('');
-      setWabaId('');
-      await refreshBusinesses();
+    if (invokeError || !data?.success) {
+      setError(data?.error ?? 'Could not disconnect WhatsApp.');
+      setSaving(false);
+      return;
     }
-    setLoading(false);
+
+    setConnection(null);
+    setPhoneNumberId('');
+    setWabaId('');
+    setAccessToken('');
+    setSaving(false);
+    await refreshBusinesses();
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
+  const copyWebhook = async () => {
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
   };
 
   if (!canEdit) {
@@ -470,99 +500,107 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     );
   }
 
+  if (loading) {
+    return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-emerald-500 animate-spin" /></div>;
+  }
+
   return (
     <div className="space-y-4">
-      {/* Connection status banner */}
-      <div className={`glass rounded-2xl p-5 ${isConnected ? 'border border-emerald-500/20' : 'border border-amber-500/20'}`}>
+      <div className={
+        'glass rounded-2xl p-5 border ' + (connection ? 'border-emerald-500/20' : 'border-amber-500/20')
+      }>
         <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isConnected ? 'bg-emerald-500/15' : 'bg-amber-500/15'}`}>
-            {isConnected ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <CircleDot className="w-5 h-5 text-amber-400" />}
+          <div className={
+            'w-10 h-10 rounded-xl flex items-center justify-center ' + (connection ? 'bg-emerald-500/15' : 'bg-amber-500/15')
+          }>
+            {connection ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <CircleDot className="w-5 h-5 text-amber-400" />}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-white">
-              {isConnected ? 'WhatsApp Connected' : 'WhatsApp Not Connected'}
+              {connection ? (connection.verified_name || 'WhatsApp Connected') : 'WhatsApp Not Connected'}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isConnected
-                ? `Connected on ${new Date(activeBusiness?.whatsapp_connected_at ?? '').toLocaleDateString()}`
-                : 'Connect WhatsApp to start receiving and replying to customer messages.'}
+              {connection?.display_phone_number ?? 'Connect a WhatsApp Business number to activate customer conversations.'}
             </p>
           </div>
-        </div>
-      </div>
-
-      {/* Setup instructions */}
-      <div className="glass rounded-2xl p-6">
-        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-emerald-400" /> WhatsApp Cloud API Setup
-        </h3>
-        <div className="space-y-3 text-xs text-slate-400 leading-relaxed">
-          <div className="flex gap-3">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 font-medium">1</span>
-            <p>Go to <span className="text-white">Meta for Developers</span> and create a WhatsApp Business app. Get your <span className="text-white">Phone Number ID</span> and <span className="text-white">WhatsApp Business Account ID</span> from the WhatsApp API setup page.</p>
-          </div>
-          <div className="flex gap-3">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 font-medium">2</span>
-            <p>ABOS uses a <span className="text-white">platform-level webhook verification token</span> stored server-side. It is never exposed in the browser.</p>
-          </div>
-          <div className="flex gap-3">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 font-medium">3</span>
-            <div className="flex-1">
-              <p>Set the webhook URL in Meta's dashboard to:</p>
-              <div className="flex items-center gap-2 mt-2">
-                <code className="flex-1 px-3 py-2 bg-black/30 rounded-lg text-emerald-400 text-[11px] overflow-x-auto whitespace-nowrap">{webhookUrl}</code>
-                <button onClick={() => copyToClipboard(webhookUrl, 'url')} className="p-2 bg-white/[0.06] rounded-lg hover:bg-white/[0.1] transition-colors flex-shrink-0">
-                  {copied === 'url' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 font-medium">4</span>
-            <p>Subscribe to <span className="text-white">messages</span> and <span className="text-white">message status</span> webhook fields in Meta's dashboard.</p>
-          </div>
-          <div className="flex gap-3">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 font-medium">5</span>
-            <p>WhatsApp credentials and the <span className="text-white">Meta App Secret</span> stay in server-side secrets. Never paste them into the dashboard or client code.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Configuration form */}
-      <form onSubmit={handleSave} className="glass rounded-2xl p-6 space-y-5">
-        <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
-            <MessageCircle className="w-3 h-3" /> Phone Number ID
-          </label>
-          <input type="text" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="e.g. 123456789012345"
-            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">WhatsApp Business Account ID</label>
-          <input type="text" value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="e.g. 987654321098765"
-            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
-        </div>
-
-        {error && (
-          <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-red-300">{error}</p>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button type="submit" disabled={loading}
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{saved ? <><Check className="w-4 h-4" /> Saved!</> : <>Save Settings <ArrowRight className="w-4 h-4" /></>}</>}
-          </button>
-          {isConnected && (
-            <button type="button" onClick={handleDisconnect} disabled={loading}
-              className="px-5 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-xl transition-all border border-red-500/20 disabled:opacity-50">
-              Disconnect
-            </button>
+          {connection && (
+            <span className="text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 uppercase tracking-wide font-semibold">
+              {connection.quality_rating ?? 'Connected'}
+            </span>
           )}
         </div>
-      </form>
+      </div>
+
+      <div className="glass rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Webhook endpoint</h3>
+            <p className="text-xs text-slate-500 mt-1">Use this HTTPS endpoint in Meta's WhatsApp webhook configuration.</p>
+          </div>
+          <button onClick={copyWebhook} type="button" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-xs text-slate-300 transition-colors">
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+        <code className="block px-3 py-3 bg-black/30 rounded-xl text-[11px] text-emerald-400 overflow-x-auto whitespace-nowrap">{webhookUrl}</code>
+        <p className="text-[11px] text-slate-600 mt-3">Subscribe the <span className="text-slate-400">messages</span> field in Meta. ABOS verifies Meta webhook signatures server-side.</p>
+      </div>
+
+      {connection ? (
+        <div className="glass rounded-2xl p-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Connected number</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><p className="text-[10px] uppercase tracking-wide text-slate-600">Phone Number ID</p><p className="text-xs text-slate-300 mt-1 break-all">{connection.phone_number_id}</p></div>
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><p className="text-[10px] uppercase tracking-wide text-slate-600">WABA ID</p><p className="text-xs text-slate-300 mt-1 break-all">{connection.waba_id}</p></div>
+            </div>
+          </div>
+          <button type="button" onClick={handleDisconnect} disabled={saving} className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-xl border border-red-500/20 disabled:opacity-50">
+            {saving ? 'Working…' : 'Disconnect WhatsApp'}
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleConnect} className="glass rounded-2xl p-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Connect a WhatsApp Business number</h3>
+            <p className="text-xs text-slate-500 mt-1">Developer connection mode. The access token is sent over HTTPS and never returned to the browser after saving.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Phone Number ID</label>
+            <input required value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="123456789012345" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">WhatsApp Business Account ID</label>
+            <input required value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="987654321098765" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Meta access token</label>
+            <input required type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Paste token for this WhatsApp account" autoComplete="off" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50" />
+          </div>
+
+          {error && <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg"><AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" /><p className="text-xs text-red-300">{error}</p></div>}
+
+          <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><MessageCircle className="w-4 h-4" /> Verify & Connect</>}
+          </button>
+        </form>
+      )}
+
+      <div className="glass rounded-2xl p-4">
+        <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="text-xs text-slate-400 hover:text-white transition-colors">
+          {showAdvanced ? 'Hide' : 'Show'} setup notes
+        </button>
+        {showAdvanced && (
+          <div className="mt-3 text-xs text-slate-500 leading-relaxed space-y-2">
+            <p>For production onboarding we will replace developer credential entry with Meta Embedded Signup.</p>
+            <p>Do not store Meta access tokens in GitHub, browser local storage, or the public database.</p>
+            <p>After Meta webhook verification succeeds, incoming messages are routed into the ABOS inbox automatically.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -133,6 +133,8 @@ export default function ConversationsPage() {
         wa_message_id: null,
         status: 'failed',
         error_code: null,
+        channel: 'whatsapp',
+        metadata: {},
         error_message: 'Could not send via WhatsApp',
         created_at: new Date().toISOString(),
       } as Message]);
@@ -429,6 +431,7 @@ function NewConversationModal({ businessId, onClose, onCreated }: {
         customer_id: linkedCustomer ?? null,
         customer_name: name.trim(),
         customer_phone: phone.trim() || null,
+        channel: 'whatsapp',
         last_message_preview: firstMessage.trim() || null,
         last_message_at: firstMessage.trim() ? new Date().toISOString() : null,
       })

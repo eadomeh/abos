@@ -62,7 +62,6 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
           whatsapp_waba_id,
           whatsapp_connected_at,
           whatsapp_business_name,
-          whatsapp_verify_token,
           country,
           currency,
           setup_complete,
