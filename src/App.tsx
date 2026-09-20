@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BusinessProvider } from '@/context/BusinessContext';
 import AuthScreen from '@/components/auth/AuthScreen';
+import LandingPage from '@/components/LandingPage';
 import AppShell from '@/components/layout/AppShell';
 import { Building2 } from 'lucide-react';
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
 
   if (loading) {
     return (
@@ -21,7 +24,9 @@ function AppContent() {
   }
 
   if (!user) {
-    return <AuthScreen />;
+    return showAuth
+      ? <AuthScreen onBack={() => setShowAuth(false)} />
+      : <LandingPage onGetStarted={() => setShowAuth(true)} />;
   }
 
   return (
