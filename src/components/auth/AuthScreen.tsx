@@ -35,6 +35,7 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [providerLoading, setProviderLoading] = useState<'google' | 'apple' | null>(null);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
@@ -58,6 +59,18 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
     mode === 'signup' ? 'Start building your intelligent business workspace.' :
     mode === 'forgot' ? 'We will send a secure recovery link to your email.' :
     'Choose a strong password for your ABOS account.';
+
+  const handleProviderSignIn = async (provider: 'google' | 'apple') => {
+    setError(null);
+    setSuccess(null);
+    setProviderLoading(provider);
+    const result = await signInWithProvider(provider);
+    if (result.error) {
+      setError(result.error);
+      setProviderLoading(null);
+    }
+    // On success the browser leaves this page for the provider.
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -88,6 +101,7 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
           setPassword('');
           setConfirmation('');
           window.history.replaceState({}, '', window.location.pathname + window.location.search);
+          onBack?.();
         }
       }
     }
@@ -170,8 +184,22 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
             {(mode === 'signin' || mode === 'signup') && (
               <>
                 <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => signInWithProvider('google')} className="rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07]">Google</button>
-                  <button type="button" onClick={() => signInWithProvider('apple')} className="rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07]">Apple</button>
+                  <button
+                    type="button"
+                    onClick={() => handleProviderSignIn('google')}
+                    disabled={providerLoading !== null}
+                    className="rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {providerLoading === 'google' ? 'Connecting…' : 'Google'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleProviderSignIn('apple')}
+                    disabled={providerLoading !== null}
+                    className="rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {providerLoading === 'apple' ? 'Connecting…' : 'Apple'}
+                  </button>
                 </div>
                 <div className="my-6 flex items-center gap-3 text-[9px] uppercase tracking-[.2em] text-slate-700"><span className="h-px flex-1 bg-white/8" /> or continue with email <span className="h-px flex-1 bg-white/8" /></div>
               </>
