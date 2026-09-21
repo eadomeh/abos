@@ -1,39 +1,45 @@
-import React,{useState} from "react";
-import "./index.css";
+import { useState } from 'react';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { BusinessProvider } from '@/context/BusinessContext';
+import AuthScreen from '@/components/auth/AuthScreen';
+import LandingPage from '@/components/LandingPage';
+import AppShell from '@/components/layout/AppShell';
+import { Building2 } from 'lucide-react';
 
-const Icon=({children}:{children:string})=><span className="ico">{children}</span>;
-const capabilities=[
- ["01","CONVERSATIONS","Every customer interaction becomes organized, searchable business intelligence.","💬"],
- ["02","INTELLIGENCE","AI combines intent with your real business context instead of generic answers.","✦"],
- ["03","AUTOMATION","Turn repetitive follow-ups and operational work into reliable workflows.","⚡"],
- ["04","GROWTH","See customers, activity and performance in one decision-ready view.","↗"]
-];
+function AppContent() {
+  const { user, loading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
 
-function Header({setPage,page}:{setPage:(x:string)=>void,page:string}){
- const [open,setOpen]=useState(false);
- return <header><button className="logo" onClick={()=>setPage("home")}><img src="/eadomeh-logo.png"/><span><b>ABOS</b><small>AI BUSINESS OPERATING SYSTEM</small></span></button>
- <nav className={open?"open":""}>{["home","platform","intelligence","automation","growth"].map((x,i)=><button className={page===x?"active":""} key={x} onClick={()=>{setPage(x);setOpen(false)}}>{String(i+1).padStart(2,"0")} {x}</button>)}</nav>
- <div className="actions"><button className="ghost" onClick={()=>setPage("dashboard")}>Sign in</button><button className="primary" onClick={()=>setPage("dashboard")}>Launch ABOS →</button><button className="hamb" onClick={()=>setOpen(!open)}>☰</button></div></header>
+  if (loading) {
+    return (
+      <div className="min-h-screen abos-bg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <Building2 className="w-6 h-6 text-white" strokeWidth={2.5} />
+          </div>
+          <div className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return showAuth
+      ? <AuthScreen onBack={() => setShowAuth(false)} />
+      : <LandingPage onGetStarted={() => setShowAuth(true)} />;
+  }
+
+  return (
+    <BusinessProvider>
+      <AppShell />
+    </BusinessProvider>
+  );
 }
 
-function Hero({go}:{go:(x:string)=>void}){return <section className="hero">
- <div className="heroText"><label>● THE INTELLIGENT OPERATING LAYER</label><h1>Your business.<br/><em>One intelligent system.</em></h1><p>ABOS connects customers, conversations, operations, automation and intelligence into one command center built for ambitious businesses.</p><div className="heroBtns"><button className="primary big" onClick={()=>go("dashboard")}>Enter your command center →</button><button className="ghost big" onClick={()=>go("platform")}>▶ Explore the system</button></div><div className="proof">● LIVE INTELLIGENCE　 ● AUTOMATED WORKFLOWS　 ● DECISION-READY DATA</div></div>
- <CommandCard/></section>}
-
-function CommandCard(){let bars=[35,50,40,64,55,76,63,91];return <div className="previewWrap"><div className="glow"/><div className="command">
- <div className="tiny">● ABOS COMMAND CENTER · LIVE <span>GROWTH WORKSPACE</span></div><div className="metric"><div><small>REVENUE MOTION</small><b>$184.2K</b></div><strong>+18.4%</strong></div>
- <div className="bars">{bars.map((x,i)=><i style={{height:x+"%"}} key={i}/>)}</div><div className="stats"><article><b>24</b><small>Active leads</small></article><article><b>91%</b><small>AI response coverage</small></article><article><b>38</b><small>Automations live</small></article></div>
- <div className="signal">✦ <span><b>AI detected a growth signal</b><small>Three high-intent conversations need follow-up.</small></span>→</div>
- </div></div>}
-
-function Platform({go}:{go:(x:string)=>void}){return <section className="section"><label>● THE OPERATING LAYER</label><h2>The parts of business that usually live apart—<em>connected.</em></h2><p className="sub">From the first message to the next sale, ABOS keeps context connected so your business can act instead of react.</p><div className="cards">{capabilities.map(([n,t,b,ic])=><button key={n} onClick={()=>go(t.toLowerCase())}><span className="num">{n}</span><span className="capIcon">{ic}</span><small>{t}</small><h3>{b}</h3><i>↗</i></button>)}</div></section>}
-
-function Process(){return <section className="process"><div className="section"><label>● HOW IT WORKS</label><h2>Signal → intelligence → action → <em>growth.</em></h2><div className="steps">{[["01","CAPTURE","Messages and leads enter one workspace."],["02","UNDERSTAND","AI combines intent with business context."],["03","ACT","Reply, follow up and automate."],["04","LEARN","Every interaction improves the system."]].map(x=><article key={x[0]}><small>{x[0]}</small><b>{x[1]}</b><p>{x[2]}</p></article>)}</div></div></section>}
-
-function Detail({type,go}:{type:string,go:(x:string)=>void}){let data:any={intelligence:["BUSINESS INTELLIGENCE","AI that knows your business.","ABOS turns conversations, customer behavior, sales activity and operating signals into a context-aware intelligence layer.",["Conversation understanding","Lead intent scoring","Revenue signal detection","AI-assisted decisions"]],automation:["AUTOMATION ENGINE","Build workflows that never forget.","Connect business events to reliable actions. The goal is not more automation—it is less operational friction.",["Lead follow-up","Customer routing","Revenue alerts","Weekly digest"]],growth:["GROWTH CONTROL","One view for the whole motion.","See customers, activity and performance in one decision-ready view.",["Revenue trajectory +18.4%","24 active leads","91% AI coverage","38 live automations"]]}[type]||null;return <section className="section detail"><label>● {data[0]}</label><div className="detailGrid"><div><h2>{data[1]}</h2><p className="sub">{data[2]}</p><ul>{data[3].map((x:string)=><li key={x}>✓ {x}</li>)}</ul><button className="primary" onClick={()=>go("dashboard")}>Open command center →</button></div><div className={"visual "+type}><div className="core">{type==="intelligence"?"✦":type==="automation"?"⚡":"↗"}</div>{Array.from({length:10},(_,i)=><i key={i} style={{"--angle": `${i*36}deg`} as React.CSSProperties}/>)}</div></div></section>}
-
-function Dashboard({go}:{go:(x:string)=>void}){return <section className="section dashboard"><div className="dashHead"><div><label>● COMMAND CENTER · LIVE</label><h2>Good morning. <em>Let's move.</em></h2><p className="sub">Your business intelligence layer is online.</p></div><button className="ghost" onClick={()=>go("home")}>Exit workspace</button></div><div className="dashTabs">{["Overview","Conversations","Leads","Automations","Intelligence"].map((x,i)=><button className={i===0?"sel":""} key={x}>{x}</button>)}</div><div className="dashGrid"><article className="dash revenue"><small>REVENUE MOTION</small><b>$184,240</b><strong>+18.4%</strong><div className="spark">{[35,50,45,65,56,73,66,90,77,95].map((x,i)=><i key={i} style={{height:x+"%"}}/>)}</div></article><article className="dash health"><small>BUSINESS HEALTH</small><b>92<small>/100</small></b><div className="ring">AI</div><p>Excellent operating momentum</p></article><article className="dash numbers"><span>24<br/><small>Active leads</small></span><span>91%<br/><small>AI coverage</small></span><span>38<br/><small>Automations</small></span></article><article className="dash activity"><small>LIVE ACTIVITY</small>{["AI qualified a new lead","Follow-up workflow completed","Revenue signal detected","Customer conversation summarized"].map((x,i)=><p key={x}><time>0{i+9}:4{i}</time><span>{x}<small>{["High intent","Automation","Growth","Intelligence"][i]}</small></span><b>{98-i*4}%</b></p>)}</article><article className="dash commander"><div>✦</div><span><small>AI COMMANDER</small><h3>Three actions are ready.</h3><p>2 high-intent leads need follow-up. One revenue signal should be reviewed.</p><button onClick={()=>go("intelligence")}>Review actions →</button></span></article></div></section>}
-
-function Footer({go}:{go:(x:string)=>void}){return <footer><div><button className="logo" onClick={()=>go("home")}><img src="/eadomeh-logo.png"/><span><b>ABOS</b><small>AI BUSINESS OPERATING SYSTEM</small></span></button><h3>Build the business you imagined.</h3><button className="primary" onClick={()=>go("dashboard")}>Launch ABOS →</button></div><hr/><p>© 2026 ABOS · All systems operational <span>Built by <b>eADOMEH</b></span></p></footer>}
-
-export default function App(){const [page,setPage]=useState("home");const go=(x:string)=>{setPage(x);window.scrollTo({top:0,behavior:"smooth"})};return <div className="app"><div className="bg"><i/><i/><i/></div><Header setPage={go} page={page}/><main>{page==="home"&&<><Hero go={go}/><Platform go={go}/><Process/><Detail type="intelligence" go={go}/><Footer go={go}/></>}{["platform","intelligence","automation","growth"].includes(page)&&<><Platform go={go}/><Process/><Detail type={page==="platform"?"intelligence":page} go={go}/><Footer go={go}/></>}{page==="dashboard"&&<Dashboard go={go}/>}</main></div>}
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
