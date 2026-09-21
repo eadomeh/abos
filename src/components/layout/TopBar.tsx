@@ -5,10 +5,11 @@ import { ChevronDown, LogOut, Plus, Menu, Building2, Check } from 'lucide-react'
 
 interface TopBarProps {
   onToggleSidebar: () => void;
+  onOpenMobileMenu: () => void;
   onOpenOnboarding: () => void;
 }
 
-export default function TopBar({ onToggleSidebar, onOpenOnboarding }: TopBarProps) {
+export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboarding }: TopBarProps) {
   const { signOut } = useAuth();
   const { businesses, activeBusiness, switchBusiness } = useBusiness();
   const [bizDropdown, setBizDropdown] = useState(false);
@@ -29,8 +30,17 @@ export default function TopBar({ onToggleSidebar, onOpenOnboarding }: TopBarProp
     <header className="h-16 abos-bg border-b border-white/[0.06] flex items-center justify-between px-4 md:px-6 flex-shrink-0">
       <div className="flex items-center gap-3">
         <button
-          onClick={onToggleSidebar}
+          onClick={onOpenMobileMenu}
           className="md:hidden p-2 text-slate-400 hover:text-white transition-colors"
+          aria-label="Open navigation"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={onToggleSidebar}
+          className="hidden md:inline-flex p-2 text-slate-400 hover:text-white transition-colors"
+          aria-label="Toggle sidebar"
         >
           <Menu className="w-5 h-5" />
         </button>
