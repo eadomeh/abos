@@ -1,7 +1,7 @@
 import { useBusiness } from '@/context/BusinessContext';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, MessageSquare,
-  Settings, Building2, BarChart3, Zap, X, Target, CheckSquare,
+  Settings, Building2, BarChart3, Zap, X, Target, CheckSquare, BrainCircuit,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,6 +20,7 @@ const navItems = [
   { id: 'leads', label: 'Leads', icon: Target },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+  { id: 'agent', label: 'AI Agent', icon: BrainCircuit },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'automations', label: 'Automations', icon: Zap },
   { id: 'settings', label: 'Settings', icon: Settings },

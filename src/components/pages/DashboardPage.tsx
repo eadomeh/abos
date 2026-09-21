@@ -164,7 +164,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       task_created: 'Task created',
       task_completed: 'Task completed',
     };
-    return map[event.event_type] ?? event.event_type.replaceAll('_', ' ');
+    return map[event.event_type] ?? event.event_type.replace(/_/g, ' ');
   };
 
   return (

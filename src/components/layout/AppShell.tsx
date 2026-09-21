@@ -12,6 +12,7 @@ import SettingsPage from '@/components/pages/SettingsPage';
 import ConversationsPage from '@/components/pages/ConversationsPage';
 import LeadsPage from '@/components/pages/LeadsPage';
 import TasksPage from '@/components/pages/TasksPage';
+import AgentPage from '@/components/pages/AgentPage';
 import PlaceholderPage from '@/components/pages/PlaceholderPage';
 import { Zap, Building2 } from 'lucide-react';
 
@@ -40,6 +41,7 @@ export default function AppShell() {
       case 'leads': return <LeadsPage />;
       case 'tasks': return <TasksPage />;
       case 'conversations': return <ConversationsPage />;
+      case 'agent': return <AgentPage />;
       case 'analytics': return <AnalyticsPage />;
       case 'automations':
         return <PlaceholderPage title="Automations" description="Event-driven workflows and automated actions. The execution engine is the next platform layer." icon={Zap} />;
