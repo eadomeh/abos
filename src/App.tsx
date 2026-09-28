@@ -3,8 +3,10 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BusinessProvider } from '@/context/BusinessContext';
 import AuthScreen from '@/components/auth/AuthScreen';
 import AppShell from '@/components/layout/AppShell';
+import LandingPage from '@/components/LandingPage';
 import { Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { getAppView } from './app-view';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -23,7 +25,9 @@ function AppContent() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  if (loading) {
+  const view = getAppView({ loading, user, showAuth });
+
+  if (view === 'loading') {
     return (
       <div className="min-h-screen abos-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -36,19 +40,19 @@ function AppContent() {
     );
   }
 
-  if (!user || showAuth) {
+  if (view === 'workspace') {
     return (
-      <AuthScreen
-        onBack={() => setShowAuth(false)}
-      />
+      <BusinessProvider>
+        <AppShell />
+      </BusinessProvider>
     );
   }
 
-  return (
-    <BusinessProvider>
-      <AppShell />
-    </BusinessProvider>
-  );
+  if (view === 'auth') {
+    return <AuthScreen onBack={() => setShowAuth(false)} />;
+  }
+
+  return <LandingPage onGetStarted={() => setShowAuth(true)} />;
 }
 
 export default function App() {

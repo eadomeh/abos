@@ -8,3 +8,7 @@ build/
 .vercel/
 .DS_Store
 *.log
+
+# local backups
+*-backup
+*.before-*
