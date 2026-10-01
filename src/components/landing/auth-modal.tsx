@@ -12,6 +12,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export type AuthMode = "signin" | "signup" | "forgot";
 
@@ -85,6 +86,7 @@ function AuthModal({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const { signIn, signUp, signInWithProvider, resetPassword } = useAuth();
   const formId = useId();
 
   function resetForm() {
@@ -100,29 +102,68 @@ function AuthModal({
     resetForm();
   }
 
-  function stub(action: string) {
-    // Isolated stub — lift this landing UI into Supabase later; do not wire src/lib/auth.
-    console.info("[abos] auth stub", action);
+  async function handleProvider(provider: "google" | "apple") {
+    setError("");
+    setNotice("");
     setBusy(true);
-    window.setTimeout(() => {
+
+    const result = await signInWithProvider(provider);
+
+    if (result.error) {
+      setError(result.error);
       setBusy(false);
-      setError("");
-      setNotice("This preview does not create or sign in to an account.");
-    }, 450);
+      return;
+    }
   }
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
+
     const trimmed = email.trim().toLowerCase();
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Enter a valid email address.");
       return;
     }
-    if (mode !== "forgot" && password.length < 8) {
-      setError("Password must be at least 8 characters.");
+
+    if (mode !== "forgot" && password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
-    stub(mode === "signin" ? "email-signin" : mode === "signup" ? "email-signup" : "forgot");
+
+    setError("");
+    setNotice("");
+    setBusy(true);
+
+    let result: { error: string | null };
+
+    if (mode === "signin") {
+      result = await signIn(trimmed, password);
+
+      if (!result.error) {
+        close();
+        return;
+      }
+    } else if (mode === "signup") {
+      result = await signUp(trimmed, password);
+
+      if (!result.error) {
+        setNotice("Account created. Check your email if confirmation is required.");
+        setBusy(false);
+        return;
+      }
+    } else {
+      result = await resetPassword(trimmed);
+
+      if (!result.error) {
+        setNotice("Recovery email sent. Check your inbox.");
+        setBusy(false);
+        return;
+      }
+    }
+
+    setError(result.error ?? "Something went wrong.");
+    setBusy(false);
   }
 
   const open = mode !== null;
@@ -164,7 +205,7 @@ function AuthModal({
                 variant="panel"
                 className="w-full gap-2"
                 disabled={busy}
-                onClick={() => stub("google")}
+                onClick={() => handleProvider("google")}
               >
                 <GoogleMark />
                 Continue with Google
@@ -174,7 +215,7 @@ function AuthModal({
                 variant="panel"
                 className="w-full gap-2"
                 disabled={busy}
-                onClick={() => stub("apple")}
+                onClick={() => handleProvider("apple")}
               >
                 <AppleMark />
                 Continue with Apple
