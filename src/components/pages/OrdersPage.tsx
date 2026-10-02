@@ -305,37 +305,18 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
     setError(null);
     setLoading(true);
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        business_id: businessId,
-        customer_id: selectedCustomerId || null,
-        status: 'pending',
-        total_amount: total,
-        currency,
-        notes: notes.trim() || null,
-      })
-      .select()
-      .maybeSingle();
+    const { data, error: orderError } = await supabase.rpc('create_order_atomic', {
+      p_business_id: businessId,
+      p_customer_id: selectedCustomerId || null,
+      p_notes: notes.trim() || null,
+      p_items: cart.map((item) => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+      })),
+    });
 
-    if (orderError || !order) {
-      setError('Could not create the order. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    const orderItems = cart.map((c) => ({
-      order_id: order.id,
-      product_id: c.product.id,
-      product_name: c.product.name,
-      unit_price: Number(c.product.price),
-      quantity: c.quantity,
-      subtotal: Number(c.product.price) * c.quantity,
-    }));
-
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-    if (itemsError) {
-      setError('Order created but items could not be added. Please try again.');
+    if (orderError || !data?.ok) {
+      setError(orderError?.message ?? 'Could not create the order. Please try again.');
       setLoading(false);
       return;
     }
