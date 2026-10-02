@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="w-full max-w-7xl mx-auto p-4 md:p-8 overflow-x-hidden">
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
         </div>
