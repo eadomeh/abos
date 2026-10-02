@@ -1,8 +1,9 @@
 import { useBusiness } from '@/context/BusinessContext';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, MessageSquare,
-  Settings, Building2, BarChart3, Zap, X, Target, CheckSquare, BrainCircuit,
+  Settings, BarChart3, Zap, X, Target, CheckSquare, BrainCircuit,
 } from 'lucide-react';
+import { AbosMark } from '@/components/landing/abos-mark';
 
 interface SidebarProps {
   currentPage: string;
@@ -38,11 +39,11 @@ export default function Sidebar({
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden" />
       )}
 
-      <aside className={`${mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex w-72' : 'hidden md:flex'} ${collapsed ? 'md:w-16' : 'md:w-60'} flex-shrink-0 abos-bg border-r border-white/[0.06] flex-col transition-all duration-300`}>
+      <aside className={`${mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex w-[18rem] max-w-[88vw] min-h-0' : 'hidden md:flex'} ${collapsed ? 'md:w-16' : 'md:w-60'} flex-shrink-0 abos-bg border-r border-white/[0.06] flex-col transition-all duration-300`}>
         <div className="h-16 flex items-center justify-between px-3 border-b border-white/[0.06]">
           <div className="flex items-center min-w-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 flex-shrink-0">
-              <Building2 className="w-5 h-5 text-white" strokeWidth={2.5} />
+              <AbosMark className="w-6 h-6" glow />
             </div>
             {!collapsed && <span className="ml-2.5 text-lg font-bold text-white tracking-tight">ABOS</span>}
           </div>

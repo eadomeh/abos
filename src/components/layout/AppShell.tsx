@@ -59,7 +59,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="h-screen abos-bg flex overflow-hidden">
+    <div className="h-[100dvh] min-h-[100dvh] abos-bg flex overflow-hidden">
       <Sidebar currentPage={page} onNavigate={handleNavigate} collapsed={sidebarCollapsed} mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar
@@ -67,7 +67,7 @@ export default function AppShell() {
           onOpenMobileMenu={() => setMobileNavOpen(true)}
           onOpenOnboarding={() => setShowOnboarding(true)}
         />
-        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <main className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden overscroll-contain">
           {activeBusiness ? renderPage() : (
             <div className="flex flex-col items-center justify-center min-h-full text-center px-4 py-10">
               <div className="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">

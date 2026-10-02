@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBusiness } from '@/context/BusinessContext';
-import { ChevronDown, LogOut, Plus, Menu, Building2, Check } from 'lucide-react';
+import { ChevronDown, LogOut, Plus, Menu, Check } from 'lucide-react';
+import { AbosMark } from '@/components/landing/abos-mark';
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -51,7 +52,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg glass glass-hover transition-all"
           >
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center flex-shrink-0">
-              <Building2 className="w-4 h-4 text-white" strokeWidth={2} />
+              <AbosMark className="w-5 h-5" glow />
             </div>
             <div className="text-left hidden sm:block">
               <p className="text-sm font-medium text-white leading-tight max-w-[140px] truncate">
@@ -77,7 +78,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-all text-left"
                   >
                     <div className="w-6 h-6 rounded-md bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                      <AbosMark className="w-4 h-4" />
                     </div>
                     <span className="text-sm text-slate-300 flex-1 truncate">{biz.name}</span>
                     {activeBusiness?.id === biz.id && <Check className="w-4 h-4 text-emerald-400" />}
