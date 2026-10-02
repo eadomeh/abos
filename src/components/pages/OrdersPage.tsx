@@ -13,6 +13,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     if (!activeBusiness) { setOrders([]); setLoading(false); return; }
@@ -50,7 +51,19 @@ export default function OrdersPage() {
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
-    await supabase.from('orders').update({ status }).eq('id', orderId);
+    setActionError(null);
+
+    const rpcName = status === 'completed' ? 'complete_order' : 'cancel_order';
+
+    const { error } = await supabase.rpc(rpcName, {
+      p_order_id: orderId,
+    });
+
+    if (error) {
+      setActionError(error.message);
+      return;
+    }
+
     fetchOrders();
   };
 
@@ -84,6 +97,12 @@ export default function OrdersPage() {
           </button>
         ))}
       </div>
+
+      {actionError && (
+        <div className="mb-5 text-sm text-red-300 bg-red-500/5 border border-red-500/20 rounded-xl p-3">
+          {actionError}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -165,14 +184,7 @@ export default function OrdersPage() {
                       </button>
                     </>
                   )}
-                  {order.status === 'completed' && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, 'pending')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-medium rounded-lg transition-all"
-                    >
-                      <Clock className="w-3 h-3" /> Reopen
-                    </button>
-                  )}
+
                 </div>
               </div>
             );
@@ -219,20 +231,51 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
   }, [businessId]);
 
   const addToCart = (product: Product) => {
+    setError(null);
+
+    if (product.stock_quantity <= 0) {
+      setError(`${product.name} is out of stock.`);
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((c) => c.product.id === product.id);
+
       if (existing) {
-        return prev.map((c) => c.product.id === product.id ? { ...c, quantity: c.quantity + 1 } : c);
+        if (existing.quantity >= product.stock_quantity) {
+          setError(`Only ${product.stock_quantity} unit(s) of ${product.name} are available.`);
+          return prev;
+        }
+
+        return prev.map((c) =>
+          c.product.id === product.id
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
+        );
       }
+
       return [...prev, { product, quantity: 1 }];
     });
   };
 
   const updateQty = (productId: string, delta: number) => {
+    setError(null);
+
     setCart((prev) => prev.map((c) => {
       if (c.product.id !== productId) return c;
-      const newQty = Math.max(1, c.quantity + delta);
-      return { ...c, quantity: newQty };
+
+      const nextQuantity = c.quantity + delta;
+
+      if (nextQuantity < 1) {
+        return c;
+      }
+
+      if (nextQuantity > c.product.stock_quantity) {
+        setError(`Only ${c.product.stock_quantity} unit(s) of ${c.product.name} are available.`);
+        return c;
+      }
+
+      return { ...c, quantity: nextQuantity };
     }));
   };
 
@@ -245,7 +288,20 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
   const formatPrice = (amount: number) => `${currency} ${Number(amount).toLocaleString()}`;
 
   const handleSubmit = async () => {
-    if (cart.length === 0) { setError('Add at least one product to the order'); return; }
+    if (cart.length === 0) {
+      setError('Add at least one product to the order');
+      return;
+    }
+
+    const stockIssue = cart.find(
+      (item) => item.quantity > item.product.stock_quantity
+    );
+
+    if (stockIssue) {
+      setError(`${stockIssue.product.name} only has ${stockIssue.product.stock_quantity} unit(s) available.`);
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -345,8 +401,9 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
                     <button
                       key={product.id}
                       type="button"
+                      disabled={product.stock_quantity <= 0}
                       onClick={() => addToCart(product)}
-                      className="flex flex-col items-start p-3 glass glass-hover rounded-xl text-left transition-all"
+                      className="flex flex-col items-start p-3 glass glass-hover rounded-xl text-left transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <span className="text-sm font-medium text-white truncate w-full">{product.name}</span>
                       <span className="text-xs text-emerald-400 mt-1">{formatPrice(Number(product.price))}</span>
@@ -372,8 +429,12 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
                           <Minus className="w-3 h-3" />
                         </button>
                         <span className="text-sm text-white w-6 text-center">{item.quantity}</span>
-                        <button type="button" onClick={() => updateQty(item.product.id, 1)}
-                          className="w-7 h-7 rounded-lg bg-white/[0.06] flex items-center justify-center text-slate-300 hover:text-white transition-colors">
+                        <button
+                          type="button"
+                          disabled={item.quantity >= item.product.stock_quantity}
+                          onClick={() => updateQty(item.product.id, 1)}
+                          className="w-7 h-7 rounded-lg bg-white/[0.06] flex items-center justify-center text-slate-300 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
                           <Plus className="w-3 h-3" />
                         </button>
                         <button type="button" onClick={() => removeFromCart(item.product.id)}
@@ -428,7 +489,8 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
 
               {/* Order summary */}
               <div className="glass rounded-xl p-4 mb-4">
-                <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Order Summary</h3>
+                <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Order Summary</h3>
+                <p className="text-[10px] text-slate-600 mb-3">Stock is deducted when the order is marked completed.</p>
                 <div className="space-y-2 mb-3">
                   {cart.map((item) => (
                     <div key={item.product.id} className="flex items-center justify-between text-sm">
