@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import type { Product } from '@/types/database';
 import {
   Package, Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
-  Box, ArrowRight, Filter,
+  Box, ArrowRight, Filter, TrendingUp,
 } from 'lucide-react';
 
 export default function ProductsPage() {
@@ -16,6 +16,7 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Product | null>(null);
+  const [showStockAdjust, setShowStockAdjust] = useState<Product | null>(null);
 
   const fetchProducts = useCallback(async () => {
     if (!activeBusiness) { setProducts([]); setLoading(false); return; }
@@ -130,16 +131,28 @@ export default function ProductsPage() {
                 <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center flex-shrink-0">
                   <Package className="w-5 h-5 text-slate-400" />
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1">
                   <button
+                    type="button"
+                    title="Adjust stock"
+                    onClick={() => setShowStockAdjust(product)}
+                    className="p-2 rounded-lg hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Edit product"
                     onClick={() => { setEditingProduct(product); setShowModal(true); }}
-                    className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors"
+                    className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    type="button"
+                    title="Delete product"
                     onClick={() => setShowDeleteConfirm(product)}
-                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                    className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -149,14 +162,38 @@ export default function ProductsPage() {
               {product.description && (
                 <p className="text-xs text-slate-500 mb-3 line-clamp-2">{product.description}</p>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-emerald-400">{formatPrice(product.price)}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-md ${
-                  product.stock_quantity > 0
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-red-500/10 text-red-400'
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-slate-600">Selling price</p>
+                  <p className="text-sm font-bold text-emerald-400 mt-1">{formatPrice(product.price)}</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-slate-600">
+                    <TrendingUp className="w-3 h-3" />
+                    Margin
+                  </div>
+                  <p className={`text-sm font-semibold mt-1 ${product.price >= product.cost_price ? 'text-slate-200' : 'text-red-400'}`}>
+                    {formatMargin(product.price, product.cost_price)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-500">
+                  Stock: <span className="text-slate-200 font-medium">{product.stock_quantity}</span>
+                </span>
+                <span className={`text-[10px] px-2 py-1 rounded-md ${
+                  product.stock_quantity === 0
+                    ? 'bg-red-500/10 text-red-400'
+                    : product.stock_quantity <= product.low_stock_threshold
+                      ? 'bg-amber-500/10 text-amber-400'
+                      : 'bg-emerald-500/10 text-emerald-400'
                 }`}>
-                  {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}
+                  {product.stock_quantity === 0
+                    ? 'Out of stock'
+                    : product.stock_quantity <= product.low_stock_threshold
+                      ? 'Low stock'
+                      : 'In stock'}
                 </span>
               </div>
               {product.category && (
@@ -176,6 +213,14 @@ export default function ProductsPage() {
           currency={activeBusiness?.currency ?? 'NGN'}
           onClose={() => { setShowModal(false); setEditingProduct(null); }}
           onSaved={() => { setShowModal(false); setEditingProduct(null); fetchProducts(); }}
+        />
+      )}
+
+      {showStockAdjust && (
+        <StockAdjustModal
+          product={showStockAdjust}
+          onClose={() => setShowStockAdjust(null)}
+          onSaved={() => { setShowStockAdjust(null); fetchProducts(); }}
         />
       )}
 
@@ -200,7 +245,9 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
   const [name, setName] = useState(product?.name ?? '');
   const [description, setDescription] = useState(product?.description ?? '');
   const [price, setPrice] = useState(product?.price?.toString() ?? '');
+  const [costPrice, setCostPrice] = useState(product?.cost_price?.toString() ?? '0');
   const [stock, setStock] = useState(product?.stock_quantity?.toString() ?? '0');
+  const [lowStockThreshold, setLowStockThreshold] = useState(product?.low_stock_threshold?.toString() ?? '5');
   const [sku, setSku] = useState(product?.sku ?? '');
   const [category, setCategory] = useState(product?.category ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
@@ -216,13 +263,38 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
     setError(null);
     setLoading(true);
 
+    const numericPrice = Number(price);
+    const numericCost = Number(costPrice);
+    const numericStock = Math.max(0, Math.floor(Number(stock) || 0));
+    const numericThreshold = Math.max(0, Math.floor(Number(lowStockThreshold) || 0));
+
+    if (Number.isNaN(numericCost) || numericCost < 0) {
+      setError('Valid cost price is required');
+      setLoading(false);
+      return;
+    }
+
+    if (Number.isNaN(Number(stock)) || Number(stock) < 0) {
+      setError('Stock quantity cannot be negative');
+      setLoading(false);
+      return;
+    }
+
+    if (Number.isNaN(Number(lowStockThreshold)) || Number(lowStockThreshold) < 0) {
+      setError('Low-stock threshold cannot be negative');
+      setLoading(false);
+      return;
+    }
+
     const payload = {
       business_id: businessId,
       name: name.trim(),
       description: description.trim() || null,
-      price: Number(price),
+      price: numericPrice,
+      cost_price: numericCost,
       currency,
-      stock_quantity: Number(stock) || 0,
+      stock_quantity: product ? product.stock_quantity : numericStock,
+      low_stock_threshold: numericThreshold,
       sku: sku.trim() || null,
       category: category.trim() || null,
       image_url: imageUrl.trim() || null,
@@ -270,16 +342,43 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
             <textarea value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description" rows={2} className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all resize-none" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Price ({currency})</label>
-              <input type="number" step="0.01" required value={price} onChange={(e) => setPrice(e.target.value)}
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Selling Price ({currency})</label>
+              <input type="number" step="0.01" min="0" required value={price} onChange={(e) => setPrice(e.target.value)}
               placeholder="0.00" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Stock Qty</label>
-              <input type="number" value={stock} onChange={(e) => setStock(e.target.value)}
-              placeholder="0" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Cost Price ({currency})</label>
+              <input type="number" step="0.01" min="0" required value={costPrice} onChange={(e) => setCostPrice(e.target.value)}
+              placeholder="0.00" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">{product ? 'Current Stock' : 'Initial Stock'}</label>
+              <input
+                type="number"
+                min="0"
+                value={stock}
+                readOnly={Boolean(product)}
+                onChange={(e) => setStock(e.target.value)}
+                placeholder="0"
+                className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all disabled:opacity-60"
+              />
+              {product && <p className="text-[10px] text-slate-600 mt-1.5">Use Adjust Stock on the product card to change existing inventory.</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Low Stock Alert At</label>
+              <input
+                type="number"
+                min="0"
+                value={lowStockThreshold}
+                onChange={(e) => setLowStockThreshold(e.target.value)}
+                placeholder="5"
+                className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -312,7 +411,7 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="px-5 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.06] text-sm font-medium transition-all">
               Cancel
@@ -320,6 +419,145 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
             <button type="submit" disabled={loading}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{product ? 'Save Changes' : 'Add Product'} <ArrowRight className="w-4 h-4" /></>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function formatMargin(price: number, cost: number) {
+  const margin = Number(price) - Number(cost);
+  const percent = Number(price) > 0 ? (margin / Number(price)) * 100 : 0;
+  return `${margin >= 0 ? '+' : ''}${margin.toLocaleString(undefined, { maximumFractionDigits: 2 })} (${percent.toFixed(1)}%)`;
+}
+
+type InventoryReason = 'sale' | 'restock' | 'adjustment' | 'return' | 'damage' | 'correction';
+
+function StockAdjustModal({ product, onClose, onSaved }: {
+  product: Product;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [quantityChange, setQuantityChange] = useState('');
+  const [reason, setReason] = useState<InventoryReason>('adjustment');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    const delta = Number(quantityChange);
+
+    if (!Number.isInteger(delta) || delta === 0) {
+      setError('Enter a non-zero whole number, e.g. +10 or -2.');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    const { error: rpcError } = await supabase.rpc('adjust_product_stock', {
+      p_product_id: product.id,
+      p_quantity_change: delta,
+      p_reason: reason,
+      p_note: note.trim() || null,
+      p_reference_type: null,
+      p_reference_id: null,
+    });
+
+    if (rpcError) {
+      setError(rpcError.message);
+      setLoading(false);
+      return;
+    }
+
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="w-full max-w-md glass rounded-2xl shadow-2xl overflow-hidden my-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-emerald-400">Inventory</p>
+            <h2 className="text-lg font-semibold text-white mt-1">Adjust Stock</h2>
+          </div>
+          <button type="button" onClick={onClose} className="p-2 text-slate-500 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="p-6 space-y-4">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4">
+            <p className="text-sm font-semibold text-white truncate">{product.name}</p>
+            <p className="text-xs text-slate-500 mt-1">Current stock: {product.stock_quantity}</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Quantity Change</label>
+            <input
+              type="number"
+              step="1"
+              required
+              value={quantityChange}
+              onChange={(e) => setQuantityChange(e.target.value)}
+              placeholder="+10 or -2"
+              className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+            />
+            <p className="text-[10px] text-slate-600 mt-1.5">Use a positive number to add stock or a negative number to remove it.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Reason</label>
+            <select
+              value={reason}
+              onChange={(e) => setReason(e.target.value as InventoryReason)}
+              className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+            >
+              <option value="adjustment" className="bg-[#0B141A]">Adjustment</option>
+              <option value="restock" className="bg-[#0B141A]">Restock</option>
+              <option value="sale" className="bg-[#0B141A]">Sale</option>
+              <option value="return" className="bg-[#0B141A]">Return</option>
+              <option value="damage" className="bg-[#0B141A]">Damage</option>
+              <option value="correction" className="bg-[#0B141A]">Correction</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Note</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="Optional reason or context"
+              className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all resize-none"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.06] text-sm font-medium transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply Stock Change'}
             </button>
           </div>
         </form>
