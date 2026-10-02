@@ -37,7 +37,7 @@ export default function AppShell() {
       case 'dashboard': return <DashboardPage onNavigate={handleNavigate} />;
       case 'products': return <ProductsPage />;
       case 'orders': return <OrdersPage />;
-      case 'customers': return <CustomersPage />;
+      case 'customers': return <CustomersPage onNavigate={handleNavigate} />;
       case 'leads': return <LeadsPage />;
       case 'tasks': return <TasksPage />;
       case 'conversations': return <ConversationsPage />;
