@@ -5,9 +5,21 @@ import type { Conversation, Message, Customer } from '@/types/database';
 import {
   MessageCircle, Search, Send, Plus, X, Loader2, AlertCircle,
   Phone, ArrowLeft, CheckCheck, User, Users, Check, AlertTriangle,
+  ShoppingCart, CircleDollarSign, Target, ClipboardList, ExternalLink,
 } from 'lucide-react';
 
-export default function ConversationsPage() {
+type CustomerContext = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  orderCount: number;
+  totalSpent: number;
+  activeLeadCount: number;
+  openTaskCount: number;
+};
+
+export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { activeBusiness } = useBusiness();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -18,6 +30,8 @@ export default function ConversationsPage() {
   const [draft, setDraft] = useState('');
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [customerContext, setCustomerContext] = useState<CustomerContext | null>(null);
+  const [loadingCustomerContext, setLoadingCustomerContext] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversations
@@ -150,6 +164,81 @@ export default function ConversationsPage() {
   });
 
   const selectedConvo = conversations.find((c) => c.id === selectedId) ?? null;
+  useEffect(() => {
+    if (!selectedConvo?.customer_id || !activeBusiness) {
+      setCustomerContext(null);
+      setLoadingCustomerContext(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadCustomerContext = async () => {
+      setLoadingCustomerContext(true);
+
+      const [customerRes, ordersRes, leadsRes, tasksRes] = await Promise.all([
+        supabase
+          .from('customers')
+          .select('id,name,phone,email')
+          .eq('id', selectedConvo.customer_id)
+          .eq('business_id', activeBusiness.id)
+          .maybeSingle(),
+
+        supabase
+          .from('orders')
+          .select('total_amount,status')
+          .eq('business_id', activeBusiness.id)
+          .eq('customer_id', selectedConvo.customer_id),
+
+        supabase
+          .from('leads')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', activeBusiness.id)
+          .eq('customer_id', selectedConvo.customer_id)
+          .not('status', 'in', '(won,lost)'),
+
+        supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('business_id', activeBusiness.id)
+          .eq('related_customer_id', selectedConvo.customer_id)
+          .neq('status', 'done'),
+      ]);
+
+      if (cancelled) return;
+
+      if (customerRes.data) {
+        const completedOrders = (ordersRes.data ?? []).filter(
+          (order) => order.status === 'completed'
+        );
+
+        setCustomerContext({
+          id: customerRes.data.id,
+          name: customerRes.data.name,
+          phone: customerRes.data.phone,
+          email: customerRes.data.email,
+          orderCount: completedOrders.length,
+          totalSpent: completedOrders.reduce(
+            (sum, order) => sum + Number(order.total_amount ?? 0),
+            0
+          ),
+          activeLeadCount: leadsRes.count ?? 0,
+          openTaskCount: tasksRes.count ?? 0,
+        });
+      } else {
+        setCustomerContext(null);
+      }
+
+      setLoadingCustomerContext(false);
+    };
+
+    void loadCustomerContext();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBusiness, selectedConvo?.customer_id]);
+
 
   if (loadingConvos) {
     return (
@@ -257,14 +346,33 @@ export default function ConversationsPage() {
                 {selectedConvo.customer_name[0]?.toUpperCase() ?? '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-white truncate">{selectedConvo.customer_name}</h3>
-                {selectedConvo.customer_phone && (
+                <h3 className="text-sm font-semibold text-white truncate">
+                  {customerContext?.name ?? selectedConvo.customer_name}
+                </h3>
+                {(customerContext?.phone ?? selectedConvo.customer_phone) && (
                   <p className="text-xs text-slate-500 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> {selectedConvo.customer_phone}
+                    <Phone className="w-3 h-3" />
+                    {customerContext?.phone ?? selectedConvo.customer_phone}
                   </p>
                 )}
               </div>
+
+              {onNavigate && customerContext && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('customers')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-slate-400 hover:text-white transition-colors flex-shrink-0"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Customer
+                </button>
+              )}
             </div>
+
+            <CustomerContextCard
+              context={customerContext}
+              loading={loadingCustomerContext}
+            />
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -373,6 +481,80 @@ export default function ConversationsPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function CustomerContextCard({
+  context,
+  loading,
+}: {
+  context: CustomerContext | null;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+        <div className="flex items-center gap-2 text-xs text-slate-600">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Loading customer context...
+        </div>
+      </div>
+    );
+  }
+
+  if (!context) {
+    return (
+      <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+        <p className="text-xs text-slate-600">No linked customer context.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+      <div className="flex items-center justify-between gap-3 mb-2.5">
+        <div>
+          <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-400">
+            Customer context
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {context.email ?? context.phone ?? 'Linked customer'}
+          </p>
+        </div>
+        <span className="text-[9px] text-emerald-400/80">LIVE</span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <ContextMetric icon={ShoppingCart} label="Orders" value={String(context.orderCount)} />
+        <ContextMetric
+          icon={CircleDollarSign}
+          label="Spent"
+          value={`NGN ${context.totalSpent.toLocaleString()}`}
+        />
+        <ContextMetric icon={Target} label="Leads" value={String(context.activeLeadCount)} />
+        <ContextMetric icon={ClipboardList} label="Tasks" value={String(context.openTaskCount)} />
+      </div>
+    </div>
+  );
+}
+
+function ContextMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof ShoppingCart;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-2.5 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <Icon className="w-3.5 h-3.5 text-slate-600" />
+        <span className="text-[9px] uppercase tracking-wider text-slate-600">{label}</span>
+      </div>
+      <p className="text-sm font-semibold text-white mt-1 truncate">{value}</p>
     </div>
   );
 }
