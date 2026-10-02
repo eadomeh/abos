@@ -274,7 +274,7 @@ export default function AgentPage() {
 
       <div className="flex-1 min-h-0">
         <div className="max-w-7xl mx-auto h-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 p-4 md:p-6">
-          <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-0">
+          <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-[32rem] xl:min-h-0">
             <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Bot className="w-4 h-4 text-emerald-400" />
