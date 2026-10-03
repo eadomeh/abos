@@ -232,12 +232,27 @@ export default function AgentPage() {
 
       setMessages((current) => [...current, assistantMessage as Message]);
 
-      const { data: persistedState } = await supabase
-        .from('conversation_ai_state')
-        .select('*')
-        .eq('business_id', activeBusiness.id)
-        .eq('conversation_id', activeConversationId)
-        .maybeSingle();
+      // Understanding is persisted by the Edge Function in a background task.
+      // Poll briefly so Live Understanding does not race that persistence.
+      let persistedState = null;
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const { data } = await supabase
+          .from('conversation_ai_state')
+          .select('*')
+          .eq('business_id', activeBusiness.id)
+          .eq('conversation_id', activeConversationId)
+          .maybeSingle();
+
+        if (data) {
+          persistedState = data;
+          break;
+        }
+
+        if (attempt < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+      }
 
       setAnalysis(
         (persistedState ?? result.analysis ?? null) as AnalysisState | null,
