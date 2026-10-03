@@ -31,10 +31,10 @@ type AnalysisState = {
 
 const STORAGE_PREFIX = 'abos_ai_agent_conversation_';
 const quickPrompts = [
-  'Yoo wassup 👋🏾',
-  'Abeg wetin una get?',
-  'How much be the black one?',
-  'Can una deliver Abuja?',
+  'What should I focus on today?',
+  'Which products are low in stock?',
+  'Show me my recent orders',
+  'Who needs a follow-up?',
 ];
 
 export default function AgentPage() {
@@ -231,7 +231,17 @@ export default function AgentPage() {
       }
 
       setMessages((current) => [...current, assistantMessage as Message]);
-      setAnalysis((result.analysis ?? null) as AnalysisState | null);
+
+      const { data: persistedState } = await supabase
+        .from('conversation_ai_state')
+        .select('*')
+        .eq('business_id', activeBusiness.id)
+        .eq('conversation_id', activeConversationId)
+        .maybeSingle();
+
+      setAnalysis(
+        (persistedState ?? result.analysis ?? null) as AnalysisState | null,
+      );
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'ABOS AI failed.');
     } finally {
@@ -251,7 +261,7 @@ export default function AgentPage() {
               </div>
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-white">ABOS AI Agent</h1>
-                <p className="text-xs md:text-sm text-slate-500">Talk to the operating brain that will power WhatsApp and automations.</p>
+                <p className="text-xs md:text-sm text-slate-500">Your private AI copilot for running this business.</p>
               </div>
             </div>
           </div>
@@ -292,7 +302,7 @@ export default function AgentPage() {
                     <Sparkles className="w-7 h-7 text-emerald-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-white">Meet your ABOS operating agent</h2>
-                  <p className="text-sm text-slate-500 max-w-md mt-2">Test greetings, Pidgin, product questions, business knowledge and sales signals.</p>
+                  <p className="text-sm text-slate-500 max-w-md mt-2">Ask ABOS about your products, orders, customers, leads, sales and next actions.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-6 w-full max-w-xl">
                     {quickPrompts.map((prompt) => (
                       <button key={prompt} type="button" onClick={() => void sendMessage(undefined, prompt)} className="text-left px-4 py-3 rounded-xl glass glass-hover text-sm text-slate-300 hover:text-white">
@@ -323,7 +333,12 @@ export default function AgentPage() {
                 <div className="flex justify-start">
                   <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white/[0.04] border border-white/[0.07] flex items-center gap-2">
                     <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
-                    <span className="text-sm text-slate-500">ABOS is thinking…</span>
+                    <span className="text-sm text-slate-400">ABOS is thinking</span>
+                    <span className="flex items-center gap-1" aria-label="ABOS is thinking">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:-0.2s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:-0.1s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" />
+                    </span>
                   </div>
                 </div>
               )}
