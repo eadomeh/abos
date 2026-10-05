@@ -601,14 +601,6 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     }
 
     window.FB.login(
-      {
-        config_id: embeddedSignupConfigId,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          sessionInfoVersion: 3,
-        },
-      },
       (response) => {
         if (response.error) {
           setSdkError(response.error.message ?? 'Meta Embedded Signup was cancelled or failed.');
@@ -627,6 +619,15 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
 
         setSdkError('Meta Embedded Signup returned no authorization response.');
         setState('error');
+      },
+      {
+        config_id: embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          sessionInfoVersion: 3,
+        },
       },
     );
   };
