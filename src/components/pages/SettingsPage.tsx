@@ -92,6 +92,7 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   const [country, setCountry] = useState(activeBusiness?.country ?? '');
   const [currency, setCurrency] = useState(activeBusiness?.currency ?? 'NGN');
   const [saved, setSaved] = useState(false);
+  const [, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -207,6 +208,7 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<BusinessRole>('agent');
+  const [, setError] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const fetchMembers = useCallback(async () => {
@@ -423,6 +425,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     status: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [showConnectFlow, setShowConnectFlow] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
@@ -537,6 +540,8 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
             ...prev,
             waba_id: data.data?.waba_id,
             phone_number_id: data.data?.phone_number_id,
+            display_phone_number: data.data?.display_phone_number,
+            verified_name: data.data?.verified_name,
           }));
           setState('authorizing');
           return;
@@ -622,6 +627,39 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
         </div>
       </div>
 
+      {/* Webhook endpoint UI - preserved from existing ABOS setup */}
+      <div className="glass rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Webhook endpoint</h3>
+            <p className="text-xs text-slate-500 mt-1">Use this HTTPS endpoint in Meta's WhatsApp webhook configuration.</p>
+          </div>
+          <button
+            onClick={async () => {
+              await navigator.clipboard.writeText(import.meta.env.VITE_SUPABASE_URL + '/functions/v1/whatsapp-webhook');
+            }}
+            type="button"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-xs text-slate-300 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-3.5 h-3.5 text-slate-400"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M20 21v2h-2v-2h-3v2H7v-2H4v-3h2V7h3v2H7v3h2v-3h3v-2h-2v-3h-3v-2h-3v2H2v-2h2v3h3v-2h-3v2H1v2h2v3h3v-2h-3v2H0v2h2v3h3v-2h-3ZM7 5.3L5.3 7H5v3h2v-3h2v3h2V7h-2V5.3zM3 15v2H1v-2h2v3h3v-2h2v-3h2v3h3v-2h-2v-3H3v-2zM21 15v2h-2v-2h-3v2H11v-2H8v2H5v-3h2V15h2v3h3v-2h-2v-3H20v-2h-2v3h2v-3h3v2h-3Z" />
+            </svg>
+            Copy
+          </button>
+        </div>
+        <code className="block px-3 py-3 bg-black/30 rounded-xl text-[11px] text-emerald-400 overflow-x-auto whitespace-nowrap">
+          {import.meta.env.VITE_SUPABASE_URL + '/functions/v1/whatsapp-webhook'}
+        </code>
+        <p className="text-[11px] text-slate-600 mt-3">
+          Subscribe the <span className="text-slate-400">messages</span> field in Meta. ABOS verifies Meta webhook signatures server-side.
+        </p>
+      </div>
+
       {/* Embedded Signup v4 Flow - replaces manual credential form */}
       {state === 'received' && (
         <div className="glass rounded-2xl p-6 border border-emerald-500/20">
@@ -690,6 +728,9 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
                       config_id: embeddedSignupConfigId,
                       response_type: 'code',
                       override_default_response_type: true,
+                      scope: 'whatsapp_business_management',
+                      return_scopes: true,
+                      auto_logout: false,
                       extras: {
                         sessionInfoVersion: 3,
                       },
@@ -700,6 +741,11 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
                         setState('error');
                         setShowConnectFlow(false);
                       } else if (response.authResponse) {
+                        // Capture the OAuth authorization code from FB.login
+                        setEmbeddedSignupData((prev) => ({
+                          ...prev,
+                          auth_code: response.authResponse.code,
+                        }));
                         // FB.login initiated the Embedded Signup flow.
                         // The actual response (code, waba_id, phone_number_id) arrives
                         // via the WA_EMBEDDED_SIGNUP window message event below.
@@ -756,15 +802,24 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
           </div>
           <button
             type="button"
-            onClick={() => {
-              // Disconnect - clear connection state, backend handles disconnection
+            onClick={async () => {
               setConnection(null);
-              // TODO: Call supabase.functions.invoke('whatsapp-connection', { body: { action: 'disconnect', businessId } })
+              setSaving(true);
+              const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+                body: { action: 'disconnect', businessId },
+              });
+
+              if (invokeError || !data?.success) {
+                setError(data?.error ?? 'Could not disconnect WhatsApp.');
+                setSaving(false);
+                return;
+              }
+
+              setSaving(false);
             }}
-            disabled={true}
-            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-xl border border-red-500/20 disabled:opacity-50"
+            disabled={saving} className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-xl border border-red-500/20 disabled:opacity-50"
           >
-            {loading ? 'Working…' : 'Disconnect WhatsApp'}
+            {saving ? 'Working…' : 'Disconnect WhatsApp'}
           </button>
         </div>
       )}
@@ -781,6 +836,7 @@ function DangerTab({ businessId, businessName, canDelete, onDeleted }: {
   const [confirmText, setConfirmText] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [, setError] = useState<string | null>(null);
 
   const handleDelete = async () => {
     if (confirmText !== businessName) {
