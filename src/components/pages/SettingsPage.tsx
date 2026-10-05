@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -7,8 +7,31 @@ import {
   Building2, Users, AlertTriangle, Loader2,
   AlertCircle, Check, Trash2, UserPlus, Shield,
   Mail, Phone, MapPin, MessageCircle, ArrowRight, Crown,
-  Copy, CheckCircle2, CircleDot,
+  CheckCircle2, CircleDot, Facebook,
 } from 'lucide-react';
+
+type FacebookSdk = {
+  init: (options: { appId: string; autoLogAppEvents: boolean; version: string }) => void;
+  login: (
+    callback: (response: {
+      authResponse?: { code?: string };
+      status?: string;
+      error?: { message?: string };
+    }) => void,
+    options: {
+      config_id: string;
+      response_type: 'code';
+      override_default_response_type: boolean;
+      extras: { sessionInfoVersion: number };
+    },
+  ) => void;
+};
+
+declare global {
+  interface Window {
+    FB?: FacebookSdk;
+  }
+}
 
 export default function SettingsPage() {
   const { activeBusiness, refreshBusinesses } = useBusiness();
@@ -69,7 +92,7 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   const [country, setCountry] = useState(activeBusiness?.country ?? '');
   const [currency, setCurrency] = useState(activeBusiness?.currency ?? 'NGN');
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -185,7 +208,7 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<BusinessRole>('agent');
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const fetchMembers = useCallback(async () => {
@@ -393,10 +416,6 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
 }
 
 function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boolean }) {
-  const { refreshBusinesses } = useBusiness();
-  const [phoneNumberId, setPhoneNumberId] = useState('');
-  const [wabaId, setWabaId] = useState('');
-  const [accessToken, setAccessToken] = useState('');
   const [connection, setConnection] = useState<{
     phone_number_id: string;
     waba_id: string;
@@ -406,12 +425,25 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     status: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [, setError] = useState<string | null>(null);
+  const [showConnectFlow, setShowConnectFlow] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
+  const [sdkReady, setSdkReady] = useState(false);
+  const embeddedSignupRef = useRef<HTMLButtonElement>(null);
+  const [state, setState] = useState<'idle' | 'launching' | 'authorizing' | 'received' | 'error' | 'cancelled'>(
+    'idle',
+  );
+  const [embeddedSignupData, setEmbeddedSignupData] = useState<{
+    auth_code?: string;
+    waba_id?: string;
+    phone_number_id?: string;
+    display_phone_number?: string;
+    verified_name?: string;
+  } | null>(null);
 
-  const webhookUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/whatsapp-webhook';
+  // Meta Embedded Signup v4 configuration - use public environment-driven config only
+  const metaAppId = import.meta.env.VITE_META_APP_ID ?? '';
+  const embeddedSignupConfigId = import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID ?? '';
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -428,67 +460,130 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
 
     const next = data?.connection ?? null;
     setConnection(next);
-    if (next) {
-      setPhoneNumberId(next.phone_number_id ?? '');
-      setWabaId(next.waba_id ?? '');
-    }
     setLoading(false);
   }, [businessId]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  const handleConnect = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
+  // Load Facebook JavaScript SDK dynamically and initialize with app ID
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-    const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
-      body: {
-        action: 'connect',
-        businessId,
-        phoneNumberId: phoneNumberId.trim(),
-        wabaId: wabaId.trim(),
-        accessToken: accessToken.trim(),
-      },
-    });
-
-    if (invokeError || !data?.success) {
-      setError(data?.details ?? data?.error ?? 'Could not connect WhatsApp.');
-      setSaving(false);
+    if (!metaAppId) {
+      setSdkError('Meta App ID is not configured.');
       return;
     }
 
-    setConnection(data.connection);
-    setAccessToken('');
-    setSaving(false);
-    await refreshBusinesses();
-  };
+    const initializeSdk = () => {
+      const fb = window.FB;
+      if (!fb) {
+        setSdkError('Meta JavaScript SDK failed to load.');
+        setSdkReady(false);
+        return;
+      }
 
-  const handleDisconnect = async () => {
-    setSaving(true);
-    setError(null);
-    const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
-      body: { action: 'disconnect', businessId },
-    });
+      fb.init({
+        appId: metaAppId,
+        autoLogAppEvents: true,
+        version: 'v16.0',
+      });
+      setSdkReady(true);
+    };
 
-    if (invokeError || !data?.success) {
-      setError(data?.error ?? 'Could not disconnect WhatsApp.');
-      setSaving(false);
+    if (window.FB) {
+      initializeSdk();
       return;
     }
 
-    setConnection(null);
-    setPhoneNumberId('');
-    setWabaId('');
-    setAccessToken('');
-    setSaving(false);
-    await refreshBusinesses();
-  };
+    const existing = window.document.getElementById('facebook-jssdk');
+    if (existing) {
+      existing.addEventListener('load', initializeSdk);
+      return () => existing.removeEventListener('load', initializeSdk);
+    }
 
-  const copyWebhook = async () => {
-    await navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    const js = window.document.createElement('script');
+    js.id = 'facebook-jssdk';
+    js.async = true;
+    js.src = 'https://connect.facebook.net/en_US/sdk.js';
+    js.onload = initializeSdk;
+    js.onerror = () => setSdkError('Meta JavaScript SDK failed to load.');
+    window.document.head.appendChild(js);
+
+    return () => {
+      js.onload = null;
+      js.onerror = null;
+    };
+  }, [metaAppId]);
+
+  // Receive the Embedded Signup session event.
+  useEffect(() => {
+    const listener = (event: MessageEvent) => {
+      try {
+        const hostname = new URL(event.origin).hostname;
+        const allowed =
+          hostname === 'facebook.com' || hostname.endsWith('.facebook.com');
+        if (!allowed) return;
+
+        const data =
+          typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+        if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
+
+        const eventName = String(data.event ?? '').toUpperCase();
+
+        if (
+          eventName === 'FINISH' ||
+          eventName === 'FINISH_ONLY_WABA' ||
+          eventName === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'
+        ) {
+          setEmbeddedSignupData((prev) => ({
+            ...prev,
+            waba_id: data.data?.waba_id,
+            phone_number_id: data.data?.phone_number_id,
+            display_phone_number: data.data?.display_phone_number,
+            verified_name: data.data?.verified_name,
+          }));
+          setState('authorizing');
+          return;
+        }
+
+        if (eventName === 'CANCEL') {
+          setSdkError('WhatsApp Embedded Signup was cancelled.');
+          setState('cancelled');
+          setShowConnectFlow(false);
+          return;
+        }
+
+        if (eventName === 'ERROR') {
+          setSdkError(
+            data.data?.error_message ?? 'WhatsApp Embedded Signup failed.',
+          );
+          setState('error');
+          setShowConnectFlow(false);
+        }
+      } catch {
+        // Ignore unrelated postMessage events.
+      }
+    };
+
+    window.addEventListener('message', listener);
+    return () => window.removeEventListener('message', listener);
+  }, []);
+
+  useEffect(() => {
+    if (
+      embeddedSignupData?.auth_code &&
+      embeddedSignupData?.waba_id &&
+      embeddedSignupData?.phone_number_id
+    ) {
+      setState('received');
+      setShowConnectFlow(false);
+    }
+  }, [embeddedSignupData]);
+
+  const handleCancel = () => {
+    setShowConnectFlow(false);
+    setSdkError(null);
   };
 
   if (!canEdit) {
@@ -503,6 +598,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   if (loading) {
     return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-emerald-500 animate-spin" /></div>;
   }
+
 
   return (
     <div className="space-y-4">
@@ -531,76 +627,202 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
         </div>
       </div>
 
+      {/* Webhook endpoint UI - preserved from existing ABOS setup */}
       <div className="glass rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-semibold text-white">Webhook endpoint</h3>
             <p className="text-xs text-slate-500 mt-1">Use this HTTPS endpoint in Meta's WhatsApp webhook configuration.</p>
           </div>
-          <button onClick={copyWebhook} type="button" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-xs text-slate-300 transition-colors">
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? 'Copied' : 'Copy'}
+          <button
+            onClick={async () => {
+              await navigator.clipboard.writeText(import.meta.env.VITE_SUPABASE_URL + '/functions/v1/whatsapp-webhook');
+            }}
+            type="button"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-xs text-slate-300 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-3.5 h-3.5 text-slate-400"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M20 21v2h-2v-2h-3v2H7v-2H4v-3h2V7h3v2H7v3h2v-3h3v-2h-2v-3h-3v-2h-3v2H2v-2h2v3h3v-2h-3v2H1v2h2v3h3v-2h-3v2H0v2h2v3h3v-2h-3ZM7 5.3L5.3 7H5v3h2v-3h2v3h2V7h-2V5.3zM3 15v2H1v-2h2v3h3v-2h2v-3h2v3h3v-2h-2v-3H3v-2zM21 15v2h-2v-2h-3v2H11v-2H8v2H5v-3h2V15h2v3h3v-2h-2v-3H20v-2h-2v3h2v-3h3v2h-3Z" />
+            </svg>
+            Copy
           </button>
         </div>
-        <code className="block px-3 py-3 bg-black/30 rounded-xl text-[11px] text-emerald-400 overflow-x-auto whitespace-nowrap">{webhookUrl}</code>
-        <p className="text-[11px] text-slate-600 mt-3">Subscribe the <span className="text-slate-400">messages</span> field in Meta. ABOS verifies Meta webhook signatures server-side.</p>
+        <code className="block px-3 py-3 bg-black/30 rounded-xl text-[11px] text-emerald-400 overflow-x-auto whitespace-nowrap">
+          {import.meta.env.VITE_SUPABASE_URL + '/functions/v1/whatsapp-webhook'}
+        </code>
+        <p className="text-[11px] text-slate-600 mt-3">
+          Subscribe the <span className="text-slate-400">messages</span> field in Meta. ABOS verifies Meta webhook signatures server-side.
+        </p>
       </div>
 
-      {connection ? (
+      {/* Embedded Signup v4 Flow - replaces manual credential form */}
+      {state === 'received' && (
+        <div className="glass rounded-2xl p-6 border border-emerald-500/20">
+          <h3 className="text-sm font-semibold text-white">Authorization received</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Authorization received — finishing setup…
+          </p>
+          {embeddedSignupData && (
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              {embeddedSignupData.phone_number_id && (
+                <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <p className="text-[10px] uppercase tracking-wide text-slate-600">Phone Number ID</p>
+                  <p className="text-xs text-slate-300 break-all">{embeddedSignupData.phone_number_id}</p>
+                </div>
+              )}
+              {embeddedSignupData.waba_id && (
+                <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <p className="text-[10px] uppercase tracking-wide text-slate-600">WABA ID</p>
+                  <p className="text-xs text-slate-300 break-all">{embeddedSignupData.waba_id}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-slate-500 mt-3">
+            The authorization code and WABA/phone metadata will be sent to the backend in the next step (SET-004).
+          </p>
+        </div>
+      )}
+
+      {showConnectFlow && !sdkReady && (
+        <div className="glass rounded-2xl p-6 border border-red-500/20">
+          <h3 className="text-sm font-semibold text-white">SDK Not Available</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Meta JavaScript SDK is required for Embedded Signup. Please ensure the SDK is loaded.
+          </p>
+        </div>
+      )}
+
+      {showConnectFlow && sdkReady && (
+        <div className="glass rounded-2xl p-6 border border-emerald-500/20">
+          <h3 className="text-sm font-semibold text-white">Connect WhatsApp Business</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Connecting via Meta Embedded Signup v4. No access tokens are stored in the browser.
+          </p>
+
+          {sdkError ? (
+            <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-300">{sdkError}</p>
+            </div>
+          ) : null}
+
+          {/* Meta Embedded Signup v4 button - triggers FB.login */}
+          {!connection && (
+            <button
+              ref={embeddedSignupRef}
+              type="button"
+              disabled={!sdkReady || !embeddedSignupConfigId}
+              onClick={() => {
+                setState('launching');
+                setSdkError(null);
+
+                if (window.FB) {
+                  window.FB.login(
+                    {
+                      config_id: embeddedSignupConfigId,
+                      response_type: 'code',
+                      override_default_response_type: true,
+                      scope: 'whatsapp_business_management',
+                      return_scopes: true,
+                      auto_logout: false,
+                      extras: {
+                        sessionInfoVersion: 3,
+                      },
+                    },
+                    (response) => {
+                      if (response.error) {
+                        setSdkError(response.error.message ?? 'Facebook Login cancelled');
+                        setState('error');
+                        setShowConnectFlow(false);
+                      } else if (response.authResponse) {
+                        // Capture the OAuth authorization code from FB.login
+                        setEmbeddedSignupData((prev) => ({
+                          ...prev,
+                          auth_code: response.authResponse.code,
+                        }));
+                        // FB.login initiated the Embedded Signup flow.
+                        // The actual response (code, waba_id, phone_number_id) arrives
+                        // via the WA_EMBEDDED_SIGNUP window message event below.
+                        setState('authorizing');
+                      } else {
+                        setSdkError('Facebook Login failed without error message');
+                        setState('error');
+                        setShowConnectFlow(false);
+                      }
+                    }
+                  );
+                } else {
+                  setSdkError('Meta JavaScript SDK not loaded');
+                  setState('error');
+                  setShowConnectFlow(false);
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+            >
+              <Facebook className="w-4 h-4" /> Connect with Facebook
+            </button>
+          )}
+
+          {connection ? (
+            <p className="text-xs text-slate-500 mt-3">WhatsApp Business connected successfully.</p>
+          ) : null}
+
+          {/* Cancellation button */}
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-300 hover:text-white text-xs font-medium transition-all mt-3"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Fallback: show manual mode note when SDK not available when not in flow */}
+      {connection && (
         <div className="glass rounded-2xl p-6 space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-white">Connected number</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><p className="text-[10px] uppercase tracking-wide text-slate-600">Phone Number ID</p><p className="text-xs text-slate-300 mt-1 break-all">{connection.phone_number_id}</p></div>
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><p className="text-[10px] uppercase tracking-wide text-slate-600">WABA ID</p><p className="text-xs text-slate-300 mt-1 break-all">{connection.waba_id}</p></div>
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-[10px] uppercase tracking-wide text-slate-600">Phone Number ID</p>
+                <p className="text-xs text-slate-300 mt-1 break-all">{connection.phone_number_id}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-[10px] uppercase tracking-wide text-slate-600">WABA ID</p>
+                <p className="text-xs text-slate-300 mt-1 break-all">{connection.waba_id}</p>
+              </div>
             </div>
           </div>
-          <button type="button" onClick={handleDisconnect} disabled={saving} className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-xl border border-red-500/20 disabled:opacity-50">
+          <button
+            type="button"
+            onClick={async () => {
+              setConnection(null);
+              setSaving(true);
+              const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+                body: { action: 'disconnect', businessId },
+              });
+
+              if (invokeError || !data?.success) {
+                setError(data?.error ?? 'Could not disconnect WhatsApp.');
+                setSaving(false);
+                return;
+              }
+
+              setSaving(false);
+            }}
+            disabled={saving} className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-xl border border-red-500/20 disabled:opacity-50"
+          >
             {saving ? 'Working…' : 'Disconnect WhatsApp'}
           </button>
         </div>
-      ) : (
-        <form onSubmit={handleConnect} className="glass rounded-2xl p-6 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Connect a WhatsApp Business number</h3>
-            <p className="text-xs text-slate-500 mt-1">Developer connection mode. The access token is sent over HTTPS and never returned to the browser after saving.</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Phone Number ID</label>
-            <input required value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="123456789012345" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50" />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">WhatsApp Business Account ID</label>
-            <input required value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="987654321098765" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50" />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Meta access token</label>
-            <input required type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Paste token for this WhatsApp account" autoComplete="off" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50" />
-          </div>
-
-          {error && <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg"><AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" /><p className="text-xs text-red-300">{error}</p></div>}
-
-          <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-500/20 disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><MessageCircle className="w-4 h-4" /> Verify & Connect</>}
-          </button>
-        </form>
       )}
-
-      <div className="glass rounded-2xl p-4">
-        <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="text-xs text-slate-400 hover:text-white transition-colors">
-          {showAdvanced ? 'Hide' : 'Show'} setup notes
-        </button>
-        {showAdvanced && (
-          <div className="mt-3 text-xs text-slate-500 leading-relaxed space-y-2">
-            <p>For production onboarding we will replace developer credential entry with Meta Embedded Signup.</p>
-            <p>Do not store Meta access tokens in GitHub, browser local storage, or the public database.</p>
-            <p>After Meta webhook verification succeeds, incoming messages are routed into the ABOS inbox automatically.</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -614,7 +836,7 @@ function DangerTab({ businessId, businessName, canDelete, onDeleted }: {
   const [confirmText, setConfirmText] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
   const handleDelete = async () => {
     if (confirmText !== businessName) {
