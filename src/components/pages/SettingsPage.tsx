@@ -582,6 +582,55 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     }
   }, [embeddedSignupData]);
 
+  const launchEmbeddedSignup = () => {
+    setEmbeddedSignupData(null);
+    setShowConnectFlow(true);
+    setState('launching');
+    setSdkError(null);
+
+    if (!embeddedSignupConfigId) {
+      setSdkError('Meta Embedded Signup configuration is not configured.');
+      setState('error');
+      return;
+    }
+
+    if (!sdkReady || !window.FB) {
+      setSdkError('Meta JavaScript SDK is still loading. Please wait a moment and try again.');
+      setState('error');
+      return;
+    }
+
+    window.FB.login(
+      {
+        config_id: embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          sessionInfoVersion: 3,
+        },
+      },
+      (response) => {
+        if (response.error) {
+          setSdkError(response.error.message ?? 'Meta Embedded Signup was cancelled or failed.');
+          setState('error');
+          return;
+        }
+
+        if (response.authResponse) {
+          setEmbeddedSignupData((prev) => ({
+            ...prev,
+            auth_code: response.authResponse.code,
+          }));
+          setState('authorizing');
+          return;
+        }
+
+        setSdkError('Meta Embedded Signup returned no authorization response.');
+        setState('error');
+      },
+    );
+  };
+
   const handleCancel = () => {
     setShowConnectFlow(false);
     setSdkError(null);
@@ -625,6 +674,14 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
               {connection.quality_rating ?? 'Connected'}
             </span>
           )}
+          <button
+            type="button"
+            onClick={launchEmbeddedSignup}
+            className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg text-emerald-300 text-xs font-medium transition-all"
+          >
+            <Facebook className="w-3.5 h-3.5" />
+            {connection ? 'Reconnect with Meta' : 'Connect with Meta'}
+          </button>
         </div>
       </div>
 
@@ -719,51 +776,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
               ref={embeddedSignupRef}
               type="button"
               disabled={!sdkReady || !embeddedSignupConfigId}
-              onClick={() => {
-                setState('launching');
-                setSdkError(null);
-
-                if (window.FB) {
-                  window.FB.login(
-                    {
-                      config_id: embeddedSignupConfigId,
-                      response_type: 'code',
-                      override_default_response_type: true,
-                      scope: 'whatsapp_business_management',
-                      return_scopes: true,
-                      auto_logout: false,
-                      extras: {
-                        sessionInfoVersion: 3,
-                      },
-                    },
-                    (response) => {
-                      if (response.error) {
-                        setSdkError(response.error.message ?? 'Facebook Login cancelled');
-                        setState('error');
-                        setShowConnectFlow(false);
-                      } else if (response.authResponse) {
-                        // Capture the OAuth authorization code from FB.login
-                        setEmbeddedSignupData((prev) => ({
-                          ...prev,
-                          auth_code: response.authResponse.code,
-                        }));
-                        // FB.login initiated the Embedded Signup flow.
-                        // The actual response (code, waba_id, phone_number_id) arrives
-                        // via the WA_EMBEDDED_SIGNUP window message event below.
-                        setState('authorizing');
-                      } else {
-                        setSdkError('Facebook Login failed without error message');
-                        setState('error');
-                        setShowConnectFlow(false);
-                      }
-                    }
-                  );
-                } else {
-                  setSdkError('Meta JavaScript SDK not loaded');
-                  setState('error');
-                  setShowConnectFlow(false);
-                }
-              }}
+              onClick={launchEmbeddedSignup}
               className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
             >
               <Facebook className="w-4 h-4" /> Connect with Facebook
