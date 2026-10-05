@@ -92,7 +92,7 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   const [country, setCountry] = useState(activeBusiness?.country ?? '');
   const [currency, setCurrency] = useState(activeBusiness?.currency ?? 'NGN');
   const [saved, setSaved] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -208,7 +208,7 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<BusinessRole>('agent');
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const fetchMembers = useCallback(async () => {
@@ -426,6 +426,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [showConnectFlow, setShowConnectFlow] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
@@ -836,7 +837,7 @@ function DangerTab({ businessId, businessName, canDelete, onDeleted }: {
   const [confirmText, setConfirmText] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDelete = async () => {
     if (confirmText !== businessName) {
