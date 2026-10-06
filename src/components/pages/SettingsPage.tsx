@@ -7,7 +7,7 @@ import {
   Building2, Users, AlertTriangle, Loader2,
   AlertCircle, Check, Trash2, UserPlus, Shield,
   Mail, Phone, MapPin, MessageCircle, ArrowRight, Crown,
-  CheckCircle2, CircleDot, Facebook,
+  CheckCircle2, CircleDot,
 } from 'lucide-react';
 
 type FacebookSdk = {
@@ -22,7 +22,7 @@ type FacebookSdk = {
       config_id: string;
       response_type: 'code';
       override_default_response_type: boolean;
-      extras: { sessionInfoVersion: number };
+      extras: {};
     },
   ) => void;
 };
@@ -608,26 +608,25 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
           return;
         }
 
-        if (response.authResponse) {
+        if (response.authResponse?.code) {
           setEmbeddedSignupData((prev) => ({
             ...prev,
-            auth_code: response.authResponse.code,
+            auth_code: response.authResponse?.code,
           }));
           setState('authorizing');
           return;
         }
 
-        setSdkError(null);
-        setState('launching');
+        setSdkError(
+          `Meta did not return an authorization code. Status: ${response.status ?? 'unknown'}`,
+        );
+        setState('error');
       },
       {
         config_id: embeddedSignupConfigId,
         response_type: 'code',
         override_default_response_type: true,
-        extras: {
-          setup: {},
-          sessionInfoVersion: 3,
-        },
+        extras: {},
       },
     );
   };
@@ -680,8 +679,8 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
             onClick={launchEmbeddedSignup}
             className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg text-emerald-300 text-xs font-medium transition-all"
           >
-            <Facebook className="w-3.5 h-3.5" />
-            {connection ? 'Reconnect with Meta' : 'Connect with Meta'}
+            <MessageCircle className="w-3.5 h-3.5" />
+            {connection ? 'Reconnect WhatsApp' : 'Connect WhatsApp'}
           </button>
         </div>
       </div>
@@ -780,7 +779,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
               onClick={launchEmbeddedSignup}
               className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
             >
-              <Facebook className="w-4 h-4" /> Connect with Facebook
+              <MessageCircle className="w-4 h-4" /> Connect WhatsApp
             </button>
           )}
 
