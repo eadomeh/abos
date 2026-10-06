@@ -486,7 +486,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
       fb.init({
         appId: metaAppId,
         autoLogAppEvents: true,
-        version: 'v16.0',
+        version: 'v26.0',
       });
       setSdkReady(true);
     };
