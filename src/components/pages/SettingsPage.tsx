@@ -617,8 +617,8 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
           return;
         }
 
-        setSdkError('Meta Embedded Signup returned no authorization response.');
-        setState('error');
+        setSdkError(null);
+        setState('launching');
       },
       {
         config_id: embeddedSignupConfigId,
