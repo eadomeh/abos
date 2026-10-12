@@ -356,6 +356,42 @@ Deno.serve(async (req: Request) => {
       return json({ success: true, connected: true, connection: result.connection });
     }
 
+    // WA test-number path: the owner connects their own Meta test/dev number.
+    // The system-user token is read from the WHATSAPP_TEST_ACCESS_TOKEN Edge
+    // Function secret, so it never passes through the browser or the chat.
+    if (action === "connect_test_number") {
+      const businessId = String(body?.businessId ?? "");
+      const phoneNumberId = String(body?.phoneNumberId ?? "").trim();
+      const wabaId = String(body?.wabaId ?? "").trim();
+
+      if (!businessId || !phoneNumberId || !wabaId) {
+        return json({ error: "businessId, phoneNumberId and wabaId are required" }, 400);
+      }
+
+      if (!/^\d+$/.test(phoneNumberId) || !/^\d+$/.test(wabaId)) {
+        return json({ error: "Phone Number ID and WABA ID must be numeric Meta IDs" }, 400);
+      }
+
+      if (!(await assertOwner(businessId, user.id))) {
+        return json({ error: "Only the business owner can connect WhatsApp" }, 403);
+      }
+
+      const testToken = (Deno.env.get("WHATSAPP_TEST_ACCESS_TOKEN") ?? "").trim();
+      if (!testToken) {
+        return json({
+          error: "Test access token is not configured",
+          details: "Add WHATSAPP_TEST_ACCESS_TOKEN to the Edge Function secrets in Supabase",
+        }, 400);
+      }
+
+      const result = await finalizeConnection({ businessId, phoneNumberId, wabaId, accessToken: testToken });
+      if (!result.ok) {
+        return json({ error: result.error, details: result.details ?? null }, 400);
+      }
+
+      return json({ success: true, connected: true, connection: result.connection });
+    }
+
     // Legacy path: browser-supplied token. Retained for backward compatibility;
     // the SET-004 flow above is the production path.
     if (action === "connect") {
