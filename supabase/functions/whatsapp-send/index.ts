@@ -47,7 +47,6 @@ async function getEncryptionKey(): Promise<CryptoKey> {
 async function decryptToken(packedValue: string): Promise<string> {
   const key = await getEncryptionKey();
   const packed = fromBase64(packedValue);
-  if (packed.length < 13) throw new Error("Invalid encrypted WhatsApp token");
   const iv = packed.slice(0, 12);
   const ciphertext = packed.slice(12);
   const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
@@ -144,6 +143,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const waMessageId = metaData?.messages?.[0]?.id ?? null;
+
     const { error: insertError } = await supabase.from("messages").insert({
       conversation_id: conversationId,
       business_id: conversation.business_id,

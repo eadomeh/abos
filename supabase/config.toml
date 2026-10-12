@@ -1,10 +1,22 @@
 project_id = "iqbhzoanssmskohhmpgj"
 
+[functions.abos-ai-agent]
+verify_jwt = false
+
+[functions.abos-ai-eval]
+verify_jwt = false
+
+[functions.abos-ai-probe]
+verify_jwt = true
+
+[functions.whatsapp-connection]
+verify_jwt = true
+
 [functions.whatsapp-webhook]
 verify_jwt = false
 
 [functions.whatsapp-send]
 verify_jwt = true
 
-[functions.whatsapp-connection]
-verify_jwt = true
+[functions.whatsapp-connect-once]
+verify_jwt = false
