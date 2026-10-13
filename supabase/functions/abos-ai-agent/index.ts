@@ -1760,6 +1760,11 @@ Deno.serve(async (req: Request) => {
       ? text(body.message_id, 100)
       : null;
     const message = text(body.message, 4000);
+    // Media prompts contain English system context. Detect customer register from the actual
+    // caption/transcript instead, so this wrapper does not bias Nigerian Pidgin detection.
+    const registerSample = typeof body.register_sample === "string"
+      ? text(body.register_sample, 1200)
+      : message;
 
     const allowedTriggers = new Set([
       "manual",
@@ -1860,7 +1865,7 @@ Deno.serve(async (req: Request) => {
 
     // The reply language follows the customer; code decides it, not the model.
     const register = audience === "customer"
-      ? detectRegister(earlierMessages, message)
+      ? detectRegister(earlierMessages, registerSample)
       : null;
 
     const developerPrompt = buildDeveloperPrompt(context, audience, register);
