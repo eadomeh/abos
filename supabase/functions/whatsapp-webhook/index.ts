@@ -153,6 +153,42 @@ function bytesToBase64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
+async function readResponseBytesLimited(response: Response, maxBytes: number): Promise<Uint8Array> {
+  const body = response.body;
+  if (!body) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.length > maxBytes) throw new Error("WhatsApp media exceeds the processing size limit");
+    return bytes;
+  }
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("WhatsApp media exceeds the processing size limit");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    try { reader.releaseLock(); } catch { /* stream may already be closed */ }
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
 function isMetaMediaHost(hostname: string) {
   const host = hostname.toLowerCase();
   return host === "lookaside.fbsbx.com" ||
@@ -235,8 +271,15 @@ async function downloadWhatsAppMedia(
   if (!download || !download.ok) throw new Error("WhatsApp media download failed");
   const contentLength = Number(download.headers.get("content-length") ?? 0);
   if (Number.isFinite(contentLength) && contentLength > maxBytes) throw new Error("WhatsApp media exceeds the processing size limit");
-  const bytes = new Uint8Array(await download.arrayBuffer());
-  if (bytes.length === 0 || bytes.length > maxBytes) throw new Error("WhatsApp media is empty or too large");
+  const bytes = await readResponseBytesLimited(download, maxBytes);
+  if (bytes.length === 0) throw new Error("WhatsApp media is empty");
+  const expectedSha256 = String(info.sha256 ?? "").trim().toLowerCase();
+  if (expectedSha256) {
+    if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error("Meta returned an invalid media integrity hash");
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    const actualSha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (actualSha256 !== expectedSha256) throw new Error("WhatsApp media integrity check failed");
+  }
   return { bytes, mimeType };
 }
 
@@ -273,7 +316,10 @@ async function prepareWhatsAppMedia(
       body: JSON.stringify({
         model: "@cf/qwen/qwen3.8-27b",
         temperature: 0.1,
-        max_tokens: 350,
+        // Qwen 3.8 defaults to high reasoning; constrain effort and reserve enough
+        // completion budget so reasoning does not consume the full visual-description response.
+        reasoning_effort: "low",
+        max_completion_tokens: 600,
         messages: [
           {
             role: "system",
