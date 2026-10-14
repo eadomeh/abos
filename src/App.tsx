@@ -5,27 +5,44 @@ import AuthScreen from '@/components/auth/AuthScreen';
 import AppShell from '@/components/layout/AppShell';
 import LandingPage from '@/components/LandingPage';
 import { Building2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { isEmailVerificationCallback, supabase } from '@/lib/supabase';
 import { getAppView } from './app-view';
 
 function AppContent() {
   const { user, loading } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [forceAuth, setForceAuth] = useState(() => window.location.hash === '#reset-password' || isEmailVerificationCallback);
 
   useEffect(() => {
     const recoveryMode = window.location.hash === '#reset-password';
-    if (recoveryMode) setShowAuth(true);
+    if (recoveryMode || isEmailVerificationCallback) {
+      setShowAuth(true);
+      setForceAuth(true);
+    }
 
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setShowAuth(true);
+        setForceAuth(true);
       }
     });
 
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const view = getAppView({ loading, user, showAuth });
+  useEffect(() => {
+    if (!isEmailVerificationCallback || loading || !user || emailVerified) return;
+    if (user.email_confirmed_at) {
+      setEmailVerified(true);
+      setForceAuth(false);
+      void supabase.auth.signOut().then(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+    }
+  }, [loading, user, emailVerified]);
+
+  const view = getAppView({ loading, user, showAuth, forceAuth });
 
   if (view === 'loading') {
     return (
@@ -49,7 +66,7 @@ function AppContent() {
   }
 
   if (view === 'auth') {
-    return <AuthScreen onBack={() => setShowAuth(false)} />;
+    return <AuthScreen onBack={() => { setShowAuth(false); setForceAuth(false); }} emailVerified={emailVerified} onRecoveryComplete={() => setForceAuth(false)} />;
   }
 
   return <LandingPage onGetStarted={() => setShowAuth(true)} />;

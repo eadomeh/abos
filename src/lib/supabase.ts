@@ -10,6 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables. Copy .env.example to .env and configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
 }
 
+export const isEmailVerificationCallback = typeof window === 'undefined' ? false : new URLSearchParams(window.location.search).get('auth_callback') === 'email-confirmation';
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     flowType: 'pkce',

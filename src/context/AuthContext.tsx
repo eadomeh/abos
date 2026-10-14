@@ -11,6 +11,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<AuthResult>;
+  resendConfirmation: (email: string) => Promise<AuthResult>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signInWithProvider: (provider: 'google' | 'apple') => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 function readableError(message: string) {
   return message
     .replace('Invalid login credentials', 'Email or password is incorrect.')
+    .replace('Email not confirmed', 'Please verify your email before signing in. Use the resend confirmation option below.')
     .replace('User already registered', 'An account with this email already exists.')
     .replace('Password should be at least 6 characters', 'Password must be at least 6 characters.');
 }
@@ -49,7 +51,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/?auth_callback=email-confirmation`,
+      },
+    });
+    if (!error && data.session) {
+      await supabase.auth.signOut();
+      return { error: 'Email confirmation is disabled. Enable email confirmations in Supabase Authentication settings before creating accounts.' };
+    }
+    return { error: error ? readableError(error.message) : null };
+  }, []);
+
+  const resendConfirmation = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/?auth_callback=email-confirmation`,
+      },
+    });
     return { error: error ? readableError(error.message) : null };
   }, []);
 
@@ -90,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       signUp,
+      resendConfirmation,
       signIn,
       signInWithProvider,
       resetPassword,

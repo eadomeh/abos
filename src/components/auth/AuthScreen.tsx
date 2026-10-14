@@ -18,13 +18,15 @@ import { supabase } from '@/lib/supabase';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'reset';
 
-export default function AuthScreen({ onBack }: { onBack?: () => void }) {
+export default function AuthScreen({ onBack, emailVerified = false, onRecoveryComplete }: { onBack?: () => void; emailVerified?: boolean; onRecoveryComplete?: () => void }) {
   const {
     signIn,
     signUp,
     signInWithProvider,
     resetPassword,
     updatePassword,
+    resendConfirmation,
+    signOut,
   } = useAuth();
 
   const [mode, setMode] = useState<Mode>(window.location.hash === '#reset-password' ? 'reset' : 'signin');
@@ -36,6 +38,7 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [providerLoading, setProviderLoading] = useState<'google' | 'apple' | null>(null);
+  const [canResendConfirmation, setCanResendConfirmation] = useState(false);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
@@ -48,6 +51,13 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!emailVerified) return;
+    setMode('signin');
+    setError(null);
+    setSuccess('Email verified. Please sign in to continue.');
+  }, [emailVerified]);
+
   const title =
     mode === 'signin' ? 'Welcome back.' :
     mode === 'signup' ? 'Build with ABOS.' :
@@ -59,6 +69,24 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
     mode === 'signup' ? 'Start building your intelligent business workspace.' :
     mode === 'forgot' ? 'We will send a secure recovery link to your email.' :
     'Choose a strong password for your ABOS account.';
+
+  const handleResendConfirmation = async () => {
+    if (!email.trim()) {
+      setError('Enter your email address first.');
+      setSuccess(null);
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    const result = await resendConfirmation(email.trim());
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setSuccess('Confirmation email sent. Check your inbox, verify your email, then sign in.');
+    }
+    setLoading(false);
+  };
 
   const handleProviderSignIn = async (provider: 'google' | 'apple') => {
     setError(null);
@@ -84,7 +112,10 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
       result = await signIn(email, password);
     } else if (mode === 'signup') {
       result = await signUp(email, password);
-      if (!result.error) setSuccess('Account created. Check your email if confirmation is required.');
+      if (!result.error) {
+        setSuccess('Confirmation email sent. Verify your email, then return here to sign in.');
+        setCanResendConfirmation(true);
+      }
     } else if (mode === 'forgot') {
       result = await resetPassword(email);
       if (!result.error) setSuccess('Recovery email sent. Check your inbox.');
@@ -96,12 +127,13 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
       } else {
         result = await updatePassword(password);
         if (!result.error) {
-          setSuccess('Password updated. You can now continue with ABOS.');
+          await signOut();
+          setSuccess('Password updated. Please sign in with your new password.');
           setMode('signin');
           setPassword('');
           setConfirmation('');
           window.history.replaceState({}, '', window.location.pathname + window.location.search);
-          onBack?.();
+          onRecoveryComplete?.();
         }
       }
     }
@@ -183,7 +215,7 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
 
             {(mode === 'signin' || mode === 'signup') && (
               <>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={() => handleProviderSignIn('google')}
@@ -196,7 +228,7 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
                     type="button"
                     onClick={() => handleProviderSignIn('apple')}
                     disabled={providerLoading !== null}
-                    className="rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="hidden rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {providerLoading === 'apple' ? 'Connecting…' : 'Apple'}
                   </button>
@@ -242,6 +274,17 @@ export default function AuthScreen({ onBack }: { onBack?: () => void }) {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send recovery link' : 'Update password'}<ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></>}
               </button>
             </form>
+
+            {(mode === 'signin' || (mode === 'signup' && canResendConfirmation)) && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={loading}
+                className="mt-4 w-full text-center text-xs text-slate-500 transition hover:text-emerald-200 disabled:opacity-50"
+              >
+                Resend confirmation email
+              </button>
+            )}
 
             <div className="mt-6 text-center text-xs text-slate-600">
               {mode === 'signin' && <>New to ABOS? <button onClick={() => switchMode('signup')} className="text-slate-300 hover:text-white">Create an account</button><button onClick={() => switchMode('forgot')} className="ml-4 text-slate-400 hover:text-white">Forgot password?</button></>}

@@ -14,6 +14,10 @@ test('unauthenticated users can enter the real auth screen', () => {
   assert.equal(getAppView({ loading: false, user: null, showAuth: true }), 'auth');
 });
 
+test('forced authentication routes to recovery even when a session exists', () => {
+  assert.equal(getAppView({ loading: false, user: { id: 'user-1' }, showAuth: true, forceAuth: true }), 'auth');
+});
+
 test('unauthenticated visitors see the public landing page', () => {
   assert.equal(getAppView({ loading: false, user: null, showAuth: false }), 'landing');
 });
