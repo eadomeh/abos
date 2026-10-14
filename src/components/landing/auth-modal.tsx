@@ -136,6 +136,29 @@ function AuthModal({
     }
   }
 
+  async function resendSignInConfirmation() {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      setError("Enter your email address first.");
+      return;
+    }
+    setError("");
+    setNotice("");
+    setBusy(true);
+    try {
+      const result = await resendConfirmation(trimmed);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setNotice("Confirmation email requested. Check your inbox and spam folder.");
+      }
+    } catch {
+      setError("Could not request a confirmation email. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
 
@@ -346,6 +369,16 @@ function AuthModal({
 
             {error ? <p className="text-sm text-amber">{error}</p> : null}
             {notice ? <p className="text-sm text-signal">{notice}</p> : null}
+            {mode === "signin" ? (
+              <button
+                type="button"
+                className="self-start text-sm text-harmattan-muted hover:text-amber disabled:opacity-50"
+                disabled={busy || !email.trim()}
+                onClick={resendSignInConfirmation}
+              >
+                Resend confirmation email
+              </button>
+            ) : null}
 
             <Button type="submit" className="mt-1 w-full" disabled={busy}>
               {mode === "signup" ? "Sign up" : mode === "forgot" ? "Send reset link" : "Sign in"}
