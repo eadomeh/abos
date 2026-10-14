@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Mail, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -86,7 +86,8 @@ function AuthModal({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const { signIn, signUp, signInWithProvider, resetPassword } = useAuth();
+  const [verificationSent, setVerificationSent] = useState(false);
+  const { signIn, signUp, signInWithProvider, resetPassword, resendConfirmation } = useAuth();
   const formId = useId();
 
   function resetForm() {
@@ -94,6 +95,7 @@ function AuthModal({
     setPassword("");
     setError("");
     setNotice("");
+    setVerificationSent(false);
     setBusy(false);
   }
 
@@ -113,6 +115,24 @@ function AuthModal({
       setError(result.error);
       setBusy(false);
       return;
+    }
+  }
+
+  async function resendSignupConfirmation() {
+    setError("");
+    setNotice("");
+    setBusy(true);
+    try {
+      const result = await resendConfirmation(email.trim().toLowerCase());
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setNotice("A new confirmation email was requested. Check your inbox and spam folder.");
+      }
+    } catch {
+      setError("Could not request another email. Please try again.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -148,7 +168,8 @@ function AuthModal({
       result = await signUp(trimmed, password);
 
       if (!result.error) {
-        setNotice("Account created. Check your email if confirmation is required.");
+        setVerificationSent(true);
+        setNotice("");
         setBusy(false);
         return;
       }
@@ -167,8 +188,9 @@ function AuthModal({
   }
 
   const open = mode !== null;
-  const title =
-    mode === "signup" ? "Create your ABOS account" : mode === "forgot" ? "Reset your password" : "Sign in to ABOS";
+  const title = verificationSent
+    ? "Check your email"
+    : mode === "signup" ? "Create your ABOS account" : mode === "forgot" ? "Reset your password" : "Sign in to ABOS";
 
   return (
     <Dialog.Root
@@ -186,9 +208,11 @@ function AuthModal({
             {title}
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-relaxed text-harmattan-muted">
-            {mode === "forgot"
-              ? "Enter the email on your account. We will not send a message from this preview."
-              : "ABOS — African Business OS. Continue with a provider or email."}
+            {verificationSent
+              ? `We sent a verification link to ${email}. Open it to verify your address, then return here and sign in.`
+              : mode === "forgot"
+                ? "Enter your account email. If it matches an account, we will send a secure recovery link."
+                : "ABOS — African Business OS. Continue with a provider or email."}
           </Dialog.Description>
 
           <Dialog.Close
@@ -198,6 +222,38 @@ function AuthModal({
             <X className="size-5" />
           </Dialog.Close>
 
+          {verificationSent ? (
+            <div className="mt-6 space-y-4">
+              <div className="mx-auto grid size-14 place-items-center rounded-full bg-signal/10 text-signal">
+                <Mail className="size-7" />
+              </div>
+              <p className="text-center text-sm leading-relaxed text-harmattan-muted">
+                Check your inbox for the ABOS verification email. Tap its confirmation link before signing in.
+              </p>
+              <p className="text-center text-xs text-quiet">
+                No message yet? Check Spam or Promotions, or request another email below.
+              </p>
+              {error ? <p className="text-sm text-amber">{error}</p> : null}
+              {notice ? <p className="text-sm text-signal">{notice}</p> : null}
+              <Button type="button" className="w-full" disabled={busy} onClick={resendSignupConfirmation}>
+                {busy ? "Sending..." : "Resend confirmation email"}
+              </Button>
+              <button
+                type="button"
+                className="w-full py-2 text-sm text-harmattan-muted hover:text-harmattan"
+                onClick={() => {
+                  setVerificationSent(false);
+                  setPassword("");
+                  setError("");
+                  setNotice("");
+                  onModeChange("signin");
+                }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          ) : (
+            <>
           {mode !== "forgot" ? (
             <div className="mt-6 flex flex-col gap-2">
               <Button
@@ -340,6 +396,8 @@ function AuthModal({
               </button>
             </p>
           ) : null}
+            </>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

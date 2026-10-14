@@ -58,6 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: `${window.location.origin}/?auth_callback=email-confirmation`,
       },
     });
+    if (!error && data.user?.identities?.length === 0) {
+      return { error: 'An account with this email may already exist. Try signing in or use Forgot password.' };
+    }
     if (!error && data.session) {
       await supabase.auth.signOut();
       return { error: 'Email confirmation is disabled. Enable email confirmations in Supabase Authentication settings before creating accounts.' };
