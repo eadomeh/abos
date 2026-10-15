@@ -67,7 +67,7 @@ function AppContent() {
     return <AuthScreen onBack={() => { setShowAuth(false); setForceAuth(false); }} emailVerified={emailVerified} onRecoveryComplete={() => setForceAuth(false)} />;
   }
 
-  return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+  return <LandingPage onGetStarted={() => setShowAuth(true)} onLogin={() => setShowAuth(true)} />;
 }
 
 export default function App() {

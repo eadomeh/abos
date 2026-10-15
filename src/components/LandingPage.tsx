@@ -14,9 +14,10 @@ import { VisionSection } from "@/components/landing/vision-section";
 
 interface LandingPageProps {
   onGetStarted?: () => void;
+  onLogin?: () => void;
 }
 
-export default function LandingPage(_props: LandingPageProps) {
+export default function LandingPage({ onLogin }: LandingPageProps) {
   const vars = {
     "--color-onyx": "#04080a",
   } as CSSProperties;
@@ -24,12 +25,12 @@ export default function LandingPage(_props: LandingPageProps) {
   return (
     <AuthUiProvider>
       <div
-        className="relative min-h-screen overflow-x-hidden bg-onyx text-harmattan"
+        className="relative min-h-screen overflow-x-clip bg-onyx text-harmattan"
         style={vars}
       >
         <div className="ambient-layer" aria-hidden="true" />
         <div className="relative z-10">
-          <SiteNav />
+          <SiteNav onLogin={onLogin} />
 
           <main>
             <HeroSection />

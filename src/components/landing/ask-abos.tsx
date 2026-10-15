@@ -1,20 +1,18 @@
 import { ArrowUp, MessageCircle, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ASK_SUGGESTIONS, replyToAbos, type AgentReply } from "@/components/landing/chat-data";
-import { PERSON } from "@/components/landing/people";
+import { ASK_SUGGESTIONS, replyToAbos } from "@/components/landing/chat-data";
 import { cn } from "@/lib/utils";
 
 type Line = {
   id: string;
   side: "user" | "abos";
   text: string;
-  person?: AgentReply["person"];
 };
 
 const WELCOME: Line = {
   id: "welcome",
   side: "abos",
-  text: "I'm the ABOS agent. Ask about stock, delivery, holds or a live customer thread — I answer from the catalog, never from invention.",
+  text: "Hi! I'm the ABOS website guide. Ask what ABOS does, how it works, or how to get started or sign in. I help with ABOS itself, not individual business advice.",
 };
 
 export function AskAbos() {
@@ -46,7 +44,7 @@ export function AskAbos() {
     window.setTimeout(() => {
       setLines((prev) => [
         ...prev,
-        { id: crypto.randomUUID(), side: "abos", text: reply.text, person: reply.person },
+        { id: crypto.randomUUID(), side: "abos", text: reply.text },
       ]);
       setTyping(false);
     }, 700);
@@ -77,8 +75,8 @@ export function AskAbos() {
                   <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-signal ring-2 ring-charcoal" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-harmattan">ABOS agent</p>
-                  <p className="text-xs text-signal">Online · catalog-backed</p>
+                  <p className="text-sm font-semibold text-harmattan">ABOS guide</p>
+                  <p className="text-xs text-signal">Website help · About ABOS</p>
                 </div>
               </div>
               <button
@@ -102,21 +100,7 @@ export function AskAbos() {
                         : "rounded-bl-sm bg-white/[0.05] text-harmattan",
                     )}
                   >
-                    {line.person ? (
-                      <span className="mb-2 flex items-center gap-2">
-                        <img
-                          src={PERSON[line.person].avatar}
-                          alt=""
-                          width={22}
-                          height={22}
-                          className="size-6 rounded-full object-cover"
-                        />
-                        <span className="text-xs text-signal">
-                          {PERSON[line.person].name} · {PERSON[line.person].city}
-                        </span>
-                      </span>
-                    ) : null}
-                    <p>{line.text}</p>
+<p>{line.text}</p>
                   </div>
                 </div>
               ))}
@@ -149,7 +133,7 @@ export function AskAbos() {
                 ref={field}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask ABOS about stock or delivery"
+                placeholder="Ask about ABOS or signing in"
                 className="h-11 flex-1 rounded-full bg-onyx px-4 text-sm text-harmattan outline-none ring-1 ring-white/10 placeholder:text-quiet focus:ring-signal/40"
               />
               <button

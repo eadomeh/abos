@@ -8,7 +8,7 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-export function SiteNav() {
+export function SiteNav({ onLogin }: { onLogin?: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { openAuth } = useAuthUi();
 
@@ -58,7 +58,7 @@ export function SiteNav() {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => openAuth("signin")}
+            onClick={() => (onLogin ? onLogin() : openAuth("signin"))}
             className="rounded-xl px-2 py-2.5 text-xs text-quiet transition-colors duration-150 hover:text-harmattan sm:px-3"
           >
             Log in

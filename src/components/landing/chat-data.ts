@@ -1,4 +1,4 @@
-import { PERSON, type PersonId } from "@/components/landing/people";
+import type { PersonId } from "@/components/landing/people";
 
 export type ChatSide = "customer" | "abos";
 
@@ -167,91 +167,73 @@ export function threadById(id: PersonId): LiveThread {
 
 export type AgentReply = {
   text: string;
-  person?: PersonId;
 };
 
 export function replyToAbos(input: string): AgentReply {
-  const q = input.toLowerCase();
+  const q = input.toLowerCase().trim();
 
-  if (/sneaker|43|black pair/.test(q)) {
+  if (/forgot password|reset my password|can't log in|cannot log in|locked out/.test(q)) {
     return {
-      person: "tunde",
-      text: `Yes. ${PERSON.tunde.name} in ${PERSON.tunde.city} is looking at the same SKU — 8 pairs of black sneakers in 43, ₦45,000. I can hold a pair or create the lead.`,
+      text: "To recover access, open Log in and choose Forgot password? Enter the email linked to your ABOS account and follow the recovery instructions.",
     };
   }
-  if (/wrap|ankara|indigo/.test(q)) {
+
+  if (/\b(log ?in|sign ?in|existing account|access my account)\b/.test(q)) {
     return {
-      person: "ada",
-      text: `Two indigo wraps in size 12, ₦18,500. I can hold one for ${PERSON.ada.name} in ${PERSON.ada.city} until 7pm.`,
+      text: "To access an existing account, tap Log in at the top of the website. The sign-in screen lets you continue with your registered email and password or use Google when Google sign-in is enabled.",
     };
   }
-  if (/bag|macbook|laptop/.test(q)) {
+
+  if (/\b(sign ?up|create an account|register|get started|new account)\b/.test(q)) {
     return {
-      person: "emeka",
-      text: `The 15-inch navy bag fits a MacBook. ₦28,000, 6 left. Ikeja hold is available for ${PERSON.emeka.name}.`,
+      text: "To get started, tap Get started and choose an available sign-up method. Email accounts may require address verification before you can sign in.",
     };
   }
-  if (/ikeja|bundle|deliver today|same-day/.test(q)) {
+
+  if (/business idea|what should i sell|what business should|business plan|business advice|how do i make money/.test(q)) {
     return {
-      person: "kemi",
-      text: `Same-day Ikeja is open until 4pm. ${PERSON.kemi.name}'s bone-straight set is in stock and can go on the 2:30pm run.`,
+      text: "I'm the ABOS website guide, so I focus on ABOS—not choosing or planning a business for you. I can explain the platform, its features, account creation, or sign-in.",
     };
   }
-  if (/shea|jar|wholesale/.test(q)) {
+
+  if (/price|pricing|cost|how much|free plan|subscription/.test(q)) {
     return {
-      person: "zainab",
-      text: `Wholesale pack is 12 jars for ₦22,000 — unscented or honey. ${PERSON.zainab.name} just reserved honey for Port Harcourt.`,
+      text: "I don't have confirmed public pricing details to quote. Please rely on ABOS's official pricing information rather than an estimate from this guide.",
     };
   }
-  if (/sauvage|perfume|fragrance/.test(q)) {
+
+  if (/whatsapp|integration|connect.*channel|channel.*connect/.test(q)) {
     return {
-      person: "funke",
-      text: `Sauvage 100ml is sealed genuine stock, ₦62,000, 3 bottles. I can hold one for ${PERSON.funke.name} in East Legon until 4pm.`,
+      text: "ABOS is designed to bring customer conversations, including WhatsApp, into one operating workspace. Connecting a real business account depends on the integration setup; this website guide cannot connect it for you.",
     };
   }
-  if (/generator|3\.5|install/.test(q)) {
+
+  if (/how does abos help|benefit|feature|what can abos do|how it work|platform|customer|conversation|automation|operation|inventory|stock|order/.test(q)) {
     return {
-      person: "ibrahim",
-      text: `The 3.5kVA is in stock. Installation is Thursday 10am–1pm in Kano — already the window ${PERSON.ibrahim.name} booked.`,
+      text: "ABOS brings customer conversations, customer context, intelligence, automation, and business operations into one workspace. The goal is to help growing African businesses work from one connected operating layer instead of disconnected tools.",
     };
   }
-  if (/kid|striped|age 4|age 6/.test(q)) {
+
+  if (/what is abos|who are you|what does abos|\babos\b/.test(q)) {
     return {
-      person: "ngozi",
-      text: `Two striped sets in age 4 at ₦9,800. Age 6 is out. I can hold both for ${PERSON.ngozi.name}.`,
+      text: "ABOS is an AI Business Operating System for growing African businesses. It is built to connect conversations, customer context, intelligence, automation, and operations in one system.",
     };
   }
-  if (/bead|wedding|coral/.test(q)) {
+
+  if (/\b(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(q)) {
     return {
-      person: "amaka",
-      text: `Saturday wedding sets are possible if ordered by 2pm. Coral, ivory and gold are in. ${PERSON.amaka.name} just booked coral.`,
-    };
-  }
-  if (/case|iphone|magsafe/.test(q)) {
-    return {
-      person: "chidi",
-      text: `Clear case is still ₦4,500, 14 in stock. iPhone 16 restock is Friday — ${PERSON.chidi.name} is already on that list.`,
-    };
-  }
-  if (/hello|hi\b|hey|good (morning|afternoon|evening)/.test(q)) {
-    return {
-      text: "I'm the ABOS agent. I answer from catalog, customers and open threads — Lagos to Nairobi — not from invention. Ask a stock, delivery or hold question.",
-    };
-  }
-  if (/what is abos|who are you|operating/.test(q)) {
-    return {
-      text: "ABOS is the AI business operating system. WhatsApp, web and every other channel feed one brain: customers, catalog, memory, tools and human control.",
+      text: "Hello! I'm the ABOS website guide. Ask me what ABOS does, how it works, how to create an account, or how to sign in.",
     };
   }
 
   return {
-    text: "I can check live stock, place a hold, or book delivery from the catalog. Try sneakers, the Ankara wrap, Ikeja delivery, or the 3.5kVA install.",
+    text: "I can help explain ABOS, its features, account creation, and sign-in. Try asking “What is ABOS?”, “How does it help a business?”, or “How do I log in?”",
   };
 }
 
 export const ASK_SUGGESTIONS = [
-  "Do you have black sneakers in 43?",
-  "Hold the Ankara wrap",
-  "Can you deliver to Ikeja today?",
-  "How many shea jars in a pack?",
+  "What is ABOS?",
+  "How does ABOS help a business?",
+  "How do I create an account?",
+  "How do I log in?",
 ] as const;
