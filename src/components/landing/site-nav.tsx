@@ -59,7 +59,7 @@ export function SiteNav() {
           <button
             type="button"
             onClick={() => openAuth("signin")}
-            className="hidden rounded-xl px-4 py-2.5 text-xs text-quiet transition-colors duration-150 hover:text-harmattan lg:block"
+            className="rounded-xl px-2 py-2.5 text-xs text-quiet transition-colors duration-150 hover:text-harmattan sm:px-3"
           >
             Log in
           </button>

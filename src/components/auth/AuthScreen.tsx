@@ -37,7 +37,7 @@ export default function AuthScreen({ onBack, emailVerified = false, onRecoveryCo
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [providerLoading, setProviderLoading] = useState<'google' | 'apple' | null>(null);
+  const [providerLoading, setProviderLoading] = useState<'google' | null>(null);
   const [canResendConfirmation, setCanResendConfirmation] = useState(false);
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function AuthScreen({ onBack, emailVerified = false, onRecoveryCo
     setLoading(false);
   };
 
-  const handleProviderSignIn = async (provider: 'google' | 'apple') => {
+  const handleProviderSignIn = async (provider: 'google') => {
     setError(null);
     setSuccess(null);
     setProviderLoading(provider);
@@ -223,14 +223,6 @@ export default function AuthScreen({ onBack, emailVerified = false, onRecoveryCo
                     className="rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {providerLoading === 'google' ? 'Connecting…' : 'Google'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleProviderSignIn('apple')}
-                    disabled={providerLoading !== null}
-                    className="hidden rounded-xl border border-white/10 bg-white/[.03] py-3 text-sm font-medium transition hover:bg-white/[.07] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {providerLoading === 'apple' ? 'Connecting…' : 'Apple'}
                   </button>
                 </div>
                 <div className="my-6 flex items-center gap-3 text-[9px] uppercase tracking-[.2em] text-slate-700"><span className="h-px flex-1 bg-white/8" /> or continue with email <span className="h-px flex-1 bg-white/8" /></div>
