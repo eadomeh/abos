@@ -197,7 +197,7 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
 
         <div className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full bg-onyx/80 px-2.5 py-1 ring-1 ring-white/10">
           <span className="size-1.5 rounded-full bg-signal" />
-          <p className="text-[10px] font-medium uppercase tracking-widest text-signal">Live messages</p>
+          <p className="text-[10px] font-medium uppercase tracking-widest text-signal">Demo messages</p>
         </div>
 
         {reduced ? null : <div className="map-scan pointer-events-none absolute inset-x-[12%] top-[8%] hidden h-px md:block" />}

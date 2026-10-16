@@ -28,12 +28,12 @@ export function NetworkSection() {
         <div className="max-w-3xl">
           <p className="text-xs uppercase tracking-widest text-signal/80">The African operating network</p>
           <h2 className="mt-4 font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
-            The continent is live.
+            One connected African network.
             <span className="block text-quiet">The catalog is the source of truth.</span>
           </h2>
           <p className="mt-6 max-w-2xl text-base leading-7 text-harmattan-muted">
-            Tap a city. Real chats fly the route — face, message, and the reply coming back. Lagos
-            to Addis, same brain.
+            Explore illustrative conversations across African cities. Each example shows how customer
+            context, catalog answers and follow-up actions can share one operating layer.
           </p>
         </div>
 
@@ -42,7 +42,7 @@ export function NetworkSection() {
 
           <div className="space-y-4">
             <div className="rounded-[1.6rem] border border-white/10 bg-charcoal p-5 sm:p-6">
-              <p className="text-xs uppercase tracking-widest text-quiet">Live city</p>
+              <p className="text-xs uppercase tracking-widest text-quiet">City spotlight</p>
               <p className="mt-2 font-display text-2xl font-semibold text-harmattan">
                 {city.name}
                 <span className="text-quiet"> · {city.country}</span>
@@ -56,7 +56,7 @@ export function NetworkSection() {
                   className="size-10 rounded-full object-cover ring-1 ring-white/10"
                 />
                 <div>
-                  <p className="text-sm text-signal">{city.person} just answered</p>
+                  <p className="text-sm text-signal">{city.person} · sample reply</p>
                   <p className="text-sm leading-6 text-harmattan-muted">{city.snippet}</p>
                 </div>
               </div>

@@ -15,7 +15,7 @@ export function LiveRail() {
 
   return (
     <div className="relative max-w-[100vw] overflow-hidden border-y border-white/[0.06] bg-onyx">
-      <p className="sr-only">Live catalog-backed replies across African cities.</p>
+      <p className="sr-only">Illustrative catalog-style replies across African cities.</p>
       <div className="live-rail overflow-hidden py-3">
         <div
           className={reduced ? "flex w-max gap-8 px-6" : "live-marquee flex w-max gap-8 px-6"}
