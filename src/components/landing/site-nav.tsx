@@ -51,7 +51,7 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
             How it thinks
           </button>
           <button type="button" onClick={() => go("conversations")} className="text-xs text-quiet transition-colors duration-150 hover:text-harmattan">
-            Live chats
+            In action
           </button>
         </nav>
 
@@ -88,7 +88,7 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
               How it thinks
             </button>
             <button type="button" onClick={() => go("conversations")} className="rounded-xl px-3 py-3 text-left text-sm text-harmattan-muted hover:bg-white/[0.03] hover:text-harmattan">
-              Live chats
+              In action
             </button>
             <button
               type="button"

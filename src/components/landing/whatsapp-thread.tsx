@@ -1,6 +1,6 @@
-import { CheckCheck, ChevronRight, MapPin, MoreHorizontal, Package, Phone, Search, Video } from "lucide-react";
+import { CheckCheck, ChevronRight, MoreHorizontal, Package, Phone, Search, Video } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LIVE_THREADS, type ChatMessage } from "@/components/landing/chat-data";
+import { LIVE_THREADS } from "@/components/landing/chat-data";
 import { PERSON } from "@/components/landing/people";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -43,14 +43,13 @@ export function WhatsappThread() {
   const [shown, setShown] = useState(reduced ? 4 : 1);
   const [typing, setTyping] = useState(false);
   const [lead, setLead] = useState(reduced);
-  const [extra, setExtra] = useState<ChatMessage[]>([]);
 
   const thread = DEMO_THREADS[threadIndex] ?? DEMO_THREADS[0]!;
   const person = PERSON[thread.id];
   const catalog = thread.messages;
   const visible = useMemo(
-    () => [...catalog.slice(0, Math.max(1, Math.min(shown, catalog.length))), ...extra],
-    [catalog, shown, extra],
+    () => catalog.slice(0, Math.max(1, Math.min(shown, catalog.length))),
+    [catalog, shown],
   );
 
   useEffect(() => {
@@ -62,7 +61,6 @@ export function WhatsappThread() {
   }, []);
 
   useEffect(() => {
-    setExtra([]);
     if (reduced) {
       setShown(catalog.length);
       setTyping(false);
@@ -109,25 +107,6 @@ export function WhatsappThread() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [visible.length, typing, lead]);
-
-  function sendSuggestion(text: string) {
-    setPlaying(false);
-    setLead(false);
-    setExtra((prev) => [...prev, { side: "customer", text, time: "now" }]);
-    setTyping(true);
-    window.setTimeout(() => {
-      setTyping(false);
-      setExtra((prev) => [
-        ...prev,
-        {
-          side: "abos",
-          text: `Done. ${person.name}'s ${person.product.toLowerCase()} stays on this WhatsApp thread with the catalog.`,
-          time: "now",
-        },
-      ]);
-      setLead(true);
-    }, 850);
-  }
 
   return (
     <div ref={stageRef} className="relative mx-auto w-full max-w-6xl">
@@ -268,34 +247,10 @@ export function WhatsappThread() {
               </div>
 
               <div className="border-t border-white/5 bg-wa-header px-3 py-2.5">
-                <div className="mb-2 flex gap-2 overflow-x-auto">
-                  {thread.suggestions.slice(0, 2).map((hint) => (
-                    <button
-                      key={hint}
-                      type="button"
-                      onClick={() => sendSuggestion(hint)}
-                      className="shrink-0 rounded-full bg-signal/15 px-3 py-1.5 text-[11px] text-signal"
-                    >
-                      {hint}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="flex flex-1 items-center gap-2 rounded-full bg-[#2a3942] px-3 py-2 text-xs text-quiet">
-                    <MapPin className="size-3.5 text-signal" />
-                    ABOS replies from live catalog
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPlaying(true);
-                      setThreadIndex((i) => (i + 1) % DEMO_THREADS.length);
-                    }}
-                    className="rounded-full bg-signal px-3 py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground"
-                  >
-                    Next
-                  </button>
-                </div>
+                <p className="flex items-center justify-center gap-2 rounded-full bg-[#2a3942] px-3 py-2 text-[11px] text-quiet">
+                  <span className="size-1.5 shrink-0 rounded-full bg-signal/70" aria-hidden="true" />
+                  Illustrative demo · Not a live chat
+                </p>
               </div>
             </div>
           </div>
