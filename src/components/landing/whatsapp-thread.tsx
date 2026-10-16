@@ -19,7 +19,7 @@ function TypingDots() {
 
 function ProductCard({ label, meta }: { label: string; meta: string }) {
   return (
-    <div className="mb-2 overflow-hidden rounded-xl bg-black/20">
+    <div className="wa-product-context mb-2 overflow-hidden rounded-xl bg-black/20">
       <div className="flex items-center gap-2 px-2.5 py-2">
         <span className="grid size-9 place-items-center rounded-lg bg-signal/15 text-signal">
           <Package className="size-4" />
@@ -40,6 +40,7 @@ export function WhatsappThread() {
   const [threadIndex, setThreadIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [inView, setInView] = useState(true);
+  const [booted, setBooted] = useState(false);
   const [shown, setShown] = useState(reduced ? 4 : 1);
   const [typing, setTyping] = useState(false);
   const [lead, setLead] = useState(reduced);
@@ -55,7 +56,18 @@ export function WhatsappThread() {
   useEffect(() => {
     const node = stageRef.current;
     if (!node) return;
-    const io = new IntersectionObserver(([entry]) => setInView(!!entry?.isIntersecting), { threshold: 0.12 });
+    if (!("IntersectionObserver" in window)) {
+      setInView(true);
+      setBooted(true);
+      return;
+    }
+
+    const io = new IntersectionObserver(([entry]) => {
+      const visible = !!entry?.isIntersecting;
+      setInView(visible);
+      if (visible) setBooted(true);
+    }, { threshold: 0.12 });
+
     io.observe(node);
     return () => io.disconnect();
   }, []);
@@ -109,8 +121,8 @@ export function WhatsappThread() {
   }, [visible.length, typing, lead]);
 
   return (
-    <div ref={stageRef} className="relative mx-auto w-full max-w-6xl">
-      <div className="mb-5 flex items-end justify-between gap-4">
+    <div ref={stageRef} className={cn("relative mx-auto w-full max-w-6xl", booted && "wa-demo-booted")}>
+      <div className="wa-channel-intro mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-signal">WhatsApp is a channel</p>
           <p className="mt-1 max-w-xl text-sm text-harmattan-muted">
@@ -128,8 +140,8 @@ export function WhatsappThread() {
       </div>
 
       <div className="abos-wa3d-stage relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#070d12] px-3 py-8 sm:px-8 sm:py-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(110,231,183,.14),transparent_28%),radial-gradient(circle_at_88%_88%,rgba(52,211,153,.08),transparent_24%)]" data-scroll-depth="7" />
-        <div className="abos-wa3d-grid pointer-events-none absolute inset-0 opacity-40" data-scroll-depth="3" />
+        <div className="wa-system-glow pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(110,231,183,.14),transparent_28%),radial-gradient(circle_at_88%_88%,rgba(52,211,153,.08),transparent_24%)]" data-scroll-depth="7" />
+        <div className="abos-wa3d-grid wa-system-grid pointer-events-none absolute inset-0 opacity-40" data-scroll-depth="3" />
 
         <div className="relative grid items-center gap-6 lg:grid-cols-[210px_minmax(0,1fr)_230px]">
           <aside className="abos-wa3d-rail hidden lg:block">
@@ -205,7 +217,7 @@ export function WhatsappThread() {
                 {visible.map((message, index) => (
                   <div
                     key={`${thread.id}-${index}`}
-                    className={cn("flex", message.side === "abos" ? "justify-end" : "justify-start")}
+                    className={cn("wa-chat-message flex", message.side === "abos" ? "justify-end" : "justify-start")}
                   >
                     <div
                       className={cn(
@@ -237,7 +249,7 @@ export function WhatsappThread() {
                 ) : null}
 
                 {lead ? (
-                  <div className="flex justify-end">
+                  <div className="wa-next-action flex justify-end">
                     <div className="flex items-center gap-2 rounded-2xl rounded-tr-sm bg-signal px-3 py-2 text-xs font-semibold text-primary-foreground shadow-[0_0_24px_rgba(110,231,183,.25)]">
                       <span className="size-1.5 rounded-full bg-onyx" />
                       {thread.action}
@@ -247,7 +259,7 @@ export function WhatsappThread() {
               </div>
 
               <div className="border-t border-white/5 bg-wa-header px-3 py-2.5">
-                <p className="flex items-center justify-center gap-2 rounded-full bg-[#2a3942] px-3 py-2 text-[11px] text-quiet">
+                <p className="wa-demo-caption flex items-center justify-center gap-2 rounded-full bg-[#2a3942] px-3 py-2 text-[11px] text-quiet">
                   <span className="size-1.5 shrink-0 rounded-full bg-signal/70" aria-hidden="true" />
                   Illustrative demo · Not a live chat
                 </p>
