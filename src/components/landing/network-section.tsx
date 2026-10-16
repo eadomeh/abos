@@ -25,7 +25,7 @@ export function NetworkSection() {
   return (
     <section id="network" className="scroll-mt-20 border-y border-white/[0.06] py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl" data-scroll-reveal>
           <p className="text-xs uppercase tracking-widest text-signal/80">The African operating network</p>
           <h2 className="mt-4 font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
             One connected African network.
@@ -37,7 +37,7 @@ export function NetworkSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <div className="mt-14 grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" data-scroll-reveal>
           <AfricaMap reduced={reduced} activeIndex={active} pinned={pinned} onSelect={select} />
 
           <div className="space-y-4">

@@ -28,6 +28,49 @@ export function useIsMobile(breakpoint = 768) {
   return mobile;
 }
 
+export function useScrollReveal() {
+  useEffect(() => {
+    const targets = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-scroll-reveal]"),
+    );
+
+    if (
+      targets.length === 0 ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      !("IntersectionObserver" in window)
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("scroll-reveal-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" },
+    );
+
+    const visibleLine = window.innerHeight * 0.9;
+
+    targets.forEach((target) => {
+      const rect = target.getBoundingClientRect();
+
+      if (rect.top < visibleLine || rect.bottom <= 0) {
+        target.classList.add("scroll-reveal-visible");
+        return;
+      }
+
+      target.classList.add("scroll-reveal-pending");
+      observer.observe(target);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+}
+
 export type GlTier = "off" | "low" | "high";
 
 export function getGlTier(): GlTier {

@@ -799,3 +799,26 @@ body::before {
   }
 }
 /* === GROK EXACT FRONT DOOR END === */
+
+
+/* === ABOS SCROLL STORYTELLING === */
+.scroll-reveal-pending {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scroll-reveal-pending.scroll-reveal-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal-pending {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

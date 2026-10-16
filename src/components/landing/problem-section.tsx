@@ -13,7 +13,7 @@ export function ProblemSection() {
     <section className="border-y border-white/[0.06] bg-[#071014]/70 py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div>
+          <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-widest text-signal/80">Built for Africa</p>
             <h2 className="mt-4 max-w-2xl font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
               Start with the realities of the market.
@@ -35,7 +35,7 @@ export function ProblemSection() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-charcoal p-6 sm:p-8">
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-charcoal p-6 sm:p-8" data-scroll-reveal>
             <div className="absolute -right-16 -top-16 size-40 rounded-full bg-signal/[0.09] blur-3xl" />
             <div className="relative space-y-3">
               {POINTS.map(([Icon, title, body]) => (

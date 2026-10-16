@@ -12,7 +12,7 @@ export function ThinkSection() {
     <section id="system" className="scroll-mt-20 py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
-          <div>
+          <div data-scroll-reveal>
             <p className="text-xs uppercase tracking-widest text-signal/80">How it works</p>
             <h2 className="mt-4 font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
               Signal becomes context. Context becomes action.
@@ -23,7 +23,7 @@ export function ThinkSection() {
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-charcoal p-6 sm:p-8">
+          <div className="rounded-[2rem] border border-white/10 bg-charcoal p-6 sm:p-8" data-scroll-reveal>
             <div className="grid gap-3 sm:grid-cols-2">
               {STEPS.map(([number, title, body]) => (
                 <div key={number} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">

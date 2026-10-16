@@ -106,16 +106,16 @@ export function ConversationsSection() {
   return (
     <section id="conversations" className="relative scroll-mt-20 overflow-hidden pb-28 pt-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <p className="text-xs uppercase tracking-widest text-signal/80">In action</p>
-        <h2 className="mt-4 max-w-xl font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
+        <p className="text-xs uppercase tracking-widest text-signal/80" data-scroll-reveal>In action</p>
+        <h2 className="mt-4 max-w-xl font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl" data-scroll-reveal>
           One agent. Every open chat.
         </h2>
-        <p className="mt-6 max-w-2xl text-base leading-7 text-harmattan-muted">
+        <p className="mt-6 max-w-2xl text-base leading-7 text-harmattan-muted" data-scroll-reveal>
           Each name has a face. ABOS stays in the thread, answers from the catalog, and keeps the next
           action attached to the customer — not to a generic chatbot.
         </p>
 
-        <div className="mt-10 mb-24 flex h-[min(30.5rem,calc(100svh-16.5rem))] flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-charcoal lg:mb-0 lg:grid lg:h-[36rem] lg:grid-cols-[19.5rem_minmax(0,1fr)]">
+        <div className="mt-10 mb-24 flex h-[min(30.5rem,calc(100svh-16.5rem))] flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-charcoal lg:mb-0 lg:grid lg:h-[36rem] lg:grid-cols-[19.5rem_minmax(0,1fr)]" data-scroll-reveal>
           <aside
             className={cn(
               "min-h-0 flex-col border-white/8 lg:border-r",

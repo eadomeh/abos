@@ -7,7 +7,7 @@ export function VisionSection() {
 
   return (
     <section className="py-24 sm:py-32">
-      <div className="mx-auto max-w-5xl px-5 text-center sm:px-8">
+      <div className="mx-auto max-w-5xl px-5 text-center sm:px-8" data-scroll-reveal>
         <p className="text-xs uppercase tracking-widest text-signal/80">The vision</p>
         <h2 className="mx-auto mt-4 max-w-4xl font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
           Not another chatbot. The operating layer behind the business.
