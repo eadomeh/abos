@@ -1,6 +1,6 @@
-import { ArrowUp, CheckCheck, ChevronLeft } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { LIVE_THREADS, replyToAbos, type ChatMessage, type LiveThread } from "@/components/landing/chat-data";
+import { CheckCheck, ChevronLeft } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LIVE_THREADS, type LiveThread } from "@/components/landing/chat-data";
 import { PERSON, type PersonId } from "@/components/landing/people";
 import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -40,8 +40,6 @@ export function ConversationsSection() {
   const [pinned, setPinned] = useState(false);
   const [shown, setShown] = useState(reduced ? 4 : 1);
   const [typing, setTyping] = useState(false);
-  const [extra, setExtra] = useState<ChatMessage[]>([]);
-  const [draft, setDraft] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
 
   const thread = useMemo(
@@ -50,7 +48,7 @@ export function ConversationsSection() {
   );
   const person = PERSON[thread.id];
   const catalog = thread.messages;
-  const visible = [...catalog.slice(0, Math.max(1, Math.min(shown, catalog.length))), ...extra];
+  const visible = catalog.slice(0, Math.max(1, Math.min(shown, catalog.length)));
   const showingThread = !mobile || openThread;
 
   useEffect(() => {
@@ -66,8 +64,6 @@ export function ConversationsSection() {
   }, [reduced, pinned, mobile, openThread]);
 
   useEffect(() => {
-    setExtra([]);
-    setDraft("");
     if (reduced) {
       setShown(catalog.length);
       setTyping(false);
@@ -107,38 +103,10 @@ export function ConversationsSection() {
     setOpenThread(true);
   }
 
-  function send(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || typing) return;
-    setPinned(true);
-    setOpenThread(true);
-    setDraft("");
-    const next: ChatMessage = { side: "customer", text: trimmed, time: "now" };
-    setExtra((prev) => [...prev, next]);
-    setTyping(true);
-    const reply = replyToAbos(trimmed);
-    window.setTimeout(() => {
-      setExtra((prev) => [
-        ...prev,
-        {
-          side: "abos",
-          text: reply.text,
-          time: "now",
-        },
-      ]);
-      setTyping(false);
-    }, 800);
-  }
-
-  function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    send(draft);
-  }
-
   return (
     <section id="conversations" className="relative scroll-mt-20 overflow-hidden pb-28 pt-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <p className="text-xs uppercase tracking-widest text-signal/80">Live chats</p>
+        <p className="text-xs uppercase tracking-widest text-signal/80">In action</p>
         <h2 className="mt-4 max-w-xl font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl">
           One agent. Every open chat.
         </h2>
@@ -157,7 +125,7 @@ export function ConversationsSection() {
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-widest text-quiet">Inbox</p>
               <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
-                {LIVE_THREADS.length} live
+                {LIVE_THREADS.length} samples
               </span>
             </div>
             <div className="chip-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-4">
@@ -250,35 +218,10 @@ export function ConversationsSection() {
               ) : null}
             </div>
 
-            <div className="shrink-0 border-t border-white/8 px-3 pb-3 pt-2 sm:px-4">
-              <div className="chip-scroll mb-2 flex gap-2 overflow-x-auto">
-                {thread.suggestions.map((hint) => (
-                  <button
-                    key={hint}
-                    type="button"
-                    onClick={() => send(hint)}
-                    className="h-9 shrink-0 snap-start rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs text-harmattan-muted hover:border-signal/30 hover:text-signal"
-                  >
-                    {hint}
-                  </button>
-                ))}
-              </div>
-              <form onSubmit={onSubmit} className="flex items-center gap-2">
-                <input
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder={`Message as ${person.name}`}
-                  className="h-11 min-w-0 flex-1 rounded-full bg-[#2a3942] px-4 text-sm text-harmattan outline-none ring-1 ring-transparent placeholder:text-quiet focus:ring-signal/40"
-                />
-                <button
-                  type="submit"
-                  disabled={!draft.trim() || typing}
-                  className="grid size-11 shrink-0 place-items-center rounded-full bg-signal text-primary-foreground disabled:opacity-40"
-                  aria-label="Send message"
-                >
-                  <ArrowUp className="size-4" />
-                </button>
-              </form>
+            <div className="shrink-0 border-t border-white/8 px-3 pb-3 pt-3 sm:px-4">
+              <p className="rounded-full bg-white/[0.03] px-3 py-2 text-center text-[11px] text-quiet">
+                Illustrative demo · Not a live chat
+              </p>
             </div>
           </div>
         </div>
