@@ -899,3 +899,29 @@ body::before {
     opacity: 0;
   }
 }
+
+
+/* === ABOS HERO ENTRANCE === */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-intro {
+    animation: abos-hero-arrive 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .hero-intro-1 { animation-delay: 40ms; }
+  .hero-intro-2 { animation-delay: 110ms; }
+  .hero-intro-3 { animation-delay: 190ms; }
+  .hero-intro-4 { animation-delay: 270ms; }
+  .hero-intro-5 { animation-delay: 380ms; }
+}
+
+@keyframes abos-hero-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}

@@ -11,22 +11,22 @@ export function HeroSection() {
   return (
     <section id="main" className="relative z-10 mx-auto max-w-7xl px-5 pb-16 pt-14 sm:px-8 sm:pb-24 sm:pt-20">
       <div className="mx-auto max-w-4xl text-center">
-        <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-signal/20 bg-signal/[0.06] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-signal">
+        <div className="hero-intro hero-intro-1 mb-7 inline-flex items-center gap-2 rounded-full border border-signal/20 bg-signal/[0.06] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.22em] text-signal">
           <span className="size-1.5 rounded-full bg-signal" />
           AI Business Operating System
         </div>
 
-        <h1 className="font-display text-display font-semibold tracking-[-0.055em] text-harmattan">
+        <h1 className="hero-intro hero-intro-2 font-display text-display font-semibold tracking-[-0.055em] text-harmattan">
           Run the business from
           <span className="mt-1 block text-signal">one intelligent system.</span>
         </h1>
 
-        <p className="mx-auto mt-7 max-w-2xl font-sans text-lede text-harmattan-muted">
+        <p className="hero-intro hero-intro-3 mx-auto mt-7 max-w-2xl font-sans text-lede text-harmattan-muted">
           ABOS connects customers, conversations, intelligence, automation and operations into one command
           layer for growing African businesses.
         </p>
 
-        <div className="mx-auto mt-9 mb-20 flex w-full max-w-md flex-col gap-3 sm:mb-0 sm:max-w-none sm:flex-row sm:justify-center">
+        <div className="hero-intro hero-intro-4 mx-auto mt-9 mb-20 flex w-full max-w-md flex-col gap-3 sm:mb-0 sm:max-w-none sm:flex-row sm:justify-center">
           <Button
             type="button"
             size="lg"
@@ -46,7 +46,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="mt-14 sm:mt-20">
+      <div className="hero-intro hero-intro-5 mt-14 sm:mt-20">
         <WhatsappThread />
       </div>
 
