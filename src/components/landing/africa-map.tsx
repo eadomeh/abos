@@ -11,6 +11,7 @@ import {
   ringToSvgPath,
 } from "@/components/landing/map-data";
 import { MapFlights } from "@/components/landing/map-flights";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -81,6 +82,40 @@ function CompactChip({ thread, place }: { thread: MapThread; place: string }) {
 }
 
 export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSelect }: Props) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [entered, setEntered] = useState(false);
+  const [networkReady, setNetworkReady] = useState(false);
+
+  useEffect(() => {
+    const node = stageRef.current;
+    if (!node) return;
+
+    if (reduced || !("IntersectionObserver" in window)) {
+      setEntered(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      setEntered(true);
+      observer.disconnect();
+    }, { threshold: 0.08, rootMargin: "0px 0px -30px 0px" });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [reduced]);
+
+  useEffect(() => {
+    if (!entered) return;
+    if (reduced) {
+      setNetworkReady(true);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setNetworkReady(true), 1300);
+    return () => window.clearTimeout(timeout);
+  }, [entered, reduced]);
+
   const city = MAP_CITIES[activeIndex] ?? MAP_CITIES[0]!;
   const pos = lonLatToPct(city.lon, city.lat);
   const featured = city.threads[0]!;
@@ -91,9 +126,12 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
   return (
     <div className="relative w-full">
       <div
+        ref={stageRef}
         className={cn(
           "map-stage relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-charcoal/40",
-          !reduced && "map-idle",
+          !reduced && entered && "map-idle",
+          entered && "map-entered",
+          networkReady && "map-network-ready",
         )}
       >
         <svg
@@ -130,15 +168,33 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
           <path
             d={ringToSvgPath(AFRICA_RING)}
             fill="url(#map-fill)"
+            className="africa-map-fill"
+          />
+          <path
+            d={ringToSvgPath(AFRICA_RING)}
+            pathLength={1}
+            fill="none"
             stroke="url(#map-stroke)"
             strokeWidth="1.7"
+            strokeDasharray={1}
+            strokeDashoffset={1}
             filter="url(#map-glow)"
+            className="africa-map-outline"
           />
           <path
             d={ringToSvgPath(MADAGASCAR_RING)}
             fill="url(#map-fill)"
+            className="africa-map-fill"
+          />
+          <path
+            d={ringToSvgPath(MADAGASCAR_RING)}
+            pathLength={1}
+            fill="none"
             stroke="url(#map-stroke)"
             strokeWidth="1.2"
+            strokeDasharray={1}
+            strokeDashoffset={1}
+            className="africa-map-outline"
           />
 
           {MAP_ARCS.map(([fromId, toId], i) => {
@@ -155,10 +211,17 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
                   stroke={live ? "#6ee7b7" : "rgba(110,231,183,0.28)"}
                   strokeWidth={live ? 1.15 : 0.55}
                   strokeDasharray="2.4 2.8"
-                  className={cn(!reduced && "map-arc")}
-                  style={{ animationDelay: `${i * 0.35}s` }}
+                  className={cn(networkReady && !reduced && "map-arc")}
+                  style={{
+                    animationDelay: `${i * 0.16}s`,
+                    opacity: networkReady ? 1 : 0,
+                    transition: "opacity 260ms ease-out",
+                    transitionDelay: networkReady ? `${i * 0.1}s` : "0s",
+                  }}
                 />
-                {reduced ? null : <Packet d={d} delay={i * 0.55} color={live ? "#fbbf24" : "#6ee7b7"} />}
+                {networkReady && !reduced ? (
+                  <Packet d={d} delay={i * 0.18} color={live ? "#fbbf24" : "#6ee7b7"} />
+                ) : null}
               </g>
             );
           })}
@@ -170,14 +233,30 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
               <g key={c.id} transform={`translate(${x} ${y})`}>
                 {on ? (
                   <>
-                    <circle r="10" fill="none" stroke="#6ee7b7" strokeWidth="0.55" className="map-radar" />
+                    <circle
+                      r="10"
+                      fill="none"
+                      stroke="#6ee7b7"
+                      strokeWidth="0.55"
+                      className={cn(networkReady && !reduced && "map-radar")}
+                      opacity={networkReady ? 1 : 0}
+                      style={{
+                        transition: "opacity 220ms ease-out",
+                        transitionDelay: networkReady ? "80ms" : "0ms",
+                      }}
+                    />
                     <circle
                       r="10"
                       fill="none"
                       stroke="#fbbf24"
                       strokeWidth="0.35"
-                      className="map-radar"
-                      style={{ animationDelay: "0.7s" }}
+                      className={cn(networkReady && !reduced && "map-radar")}
+                      opacity={networkReady ? 1 : 0}
+                      style={{
+                        animationDelay: "0.35s",
+                        transition: "opacity 220ms ease-out",
+                        transitionDelay: networkReady ? "160ms" : "0ms",
+                      }}
                     />
                   </>
                 ) : null}
@@ -185,15 +264,20 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
                   r={on ? 3.8 : 2.15}
                   fill={on ? "#fbbf24" : "#6ee7b7"}
                   filter={on ? "url(#map-glow)" : undefined}
-                  className={cn(!reduced && !on && "map-marker-pulse")}
-                  style={{ animationDelay: `${c.delay}s` }}
+                  className={cn(networkReady && !reduced && !on && "map-marker-pulse")}
+                  opacity={networkReady ? 1 : 0}
+                  style={{
+                    animationDelay: `${c.delay}s`,
+                    transition: "opacity 220ms ease-out",
+                    transitionDelay: networkReady ? `${0.16 + c.delay * 0.2}s` : "0ms",
+                  }}
                 />
               </g>
             );
           })}
         </svg>
 
-        <MapFlights reduced={reduced} />
+        {networkReady ? <MapFlights reduced={reduced} /> : null}
 
         <div className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full bg-onyx/80 px-2.5 py-1 ring-1 ring-white/10">
           <span className="size-1.5 rounded-full bg-signal" />
@@ -204,8 +288,8 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
 
         <div
           className={cn(
-            "pointer-events-none absolute z-20 hidden w-[12.5rem] md:block",
-            !pinned && "map-chip",
+            "pointer-events-none absolute z-20 hidden w-[12.5rem] md:block map-feature-chip",
+            networkReady && !pinned && "map-chip",
           )}
           data-scroll-depth="5"
           style={{ left: `${popupX}%`, top: `${popupY}%` }}
@@ -213,7 +297,7 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
           <ChatChip thread={featured} place={city.name} country={city.country} />
         </div>
 
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 md:hidden" data-scroll-depth="4">
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 md:hidden map-feature-chip" data-scroll-depth="4">
           <CompactChip thread={featured} place={city.name} />
         </div>
 
