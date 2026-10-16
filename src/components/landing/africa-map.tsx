@@ -200,19 +200,20 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
           <p className="text-[10px] font-medium uppercase tracking-widest text-signal">Demo messages</p>
         </div>
 
-        {reduced ? null : <div className="map-scan pointer-events-none absolute inset-x-[12%] top-[8%] hidden h-px md:block" />}
+        {reduced ? null : <div className="map-scan pointer-events-none absolute inset-x-[12%] top-[8%] hidden h-px md:block" data-scroll-depth="3" />}
 
         <div
           className={cn(
             "pointer-events-none absolute z-20 hidden w-[12.5rem] md:block",
             !pinned && "map-chip",
           )}
+          data-scroll-depth="5"
           style={{ left: `${popupX}%`, top: `${popupY}%` }}
         >
           <ChatChip thread={featured} place={city.name} country={city.country} />
         </div>
 
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 md:hidden">
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 md:hidden" data-scroll-depth="4">
           <CompactChip thread={featured} place={city.name} />
         </div>
 

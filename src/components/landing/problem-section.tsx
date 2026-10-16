@@ -38,8 +38,8 @@ export function ProblemSection() {
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-charcoal p-6 sm:p-8" data-scroll-reveal>
             <div className="absolute -right-16 -top-16 size-40 rounded-full bg-signal/[0.09] blur-3xl" />
             <div className="relative space-y-3">
-              {POINTS.map(([Icon, title, body]) => (
-                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+              {POINTS.map(([Icon, title, body], index) => (
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5" data-scroll-reveal-item={String(index + 1).padStart(2, "0")}>
                   <div className="flex items-start gap-3">
                     <Icon className="mt-0.5 size-4 shrink-0 text-signal" />
                     <div>

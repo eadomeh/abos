@@ -26,7 +26,7 @@ export function ThinkSection() {
           <div className="rounded-[2rem] border border-white/10 bg-charcoal p-6 sm:p-8" data-scroll-reveal>
             <div className="grid gap-3 sm:grid-cols-2">
               {STEPS.map(([number, title, body]) => (
-                <div key={number} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                <div key={number} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5" data-scroll-reveal-item={number}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs tracking-widest text-quiet">{number}</span>
                     <ArrowRight className="size-4 text-signal/60" />

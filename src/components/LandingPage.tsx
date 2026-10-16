@@ -9,7 +9,7 @@ import { NetworkSection } from "@/components/landing/network-section";
 import { ProblemSection } from "@/components/landing/problem-section";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteNav } from "@/components/landing/site-nav";
-import { useScrollReveal } from "@/lib/hooks";
+import { useScrollDepth, useScrollReveal } from "@/lib/hooks";
 import { ThinkSection } from "@/components/landing/think-section";
 import { VisionSection } from "@/components/landing/vision-section";
 
@@ -20,6 +20,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
   useScrollReveal();
+  useScrollDepth();
 
   const vars = {
     "--color-onyx": "#04080a",

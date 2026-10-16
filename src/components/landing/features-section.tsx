@@ -50,7 +50,7 @@ export function FeaturesSection() {
 
         <div className="mt-14 grid gap-px overflow-hidden rounded-[2rem] border border-white/10 bg-white/10 lg:grid-cols-2" data-scroll-reveal>
           {PILLARS.map(({ number, eyebrow, title, body, icon: Icon }) => (
-            <article key={eyebrow} className="bg-charcoal p-7 sm:p-9">
+            <article key={eyebrow} className="bg-charcoal p-7 sm:p-9" data-scroll-reveal-item={number}>
               <div className="flex items-start justify-between gap-6">
                 <div className="grid size-11 place-items-center rounded-2xl border border-signal/10 bg-signal/[0.04]">
                   <Icon className="size-5 text-signal" />

@@ -41,7 +41,7 @@ export function NetworkSection() {
           <AfricaMap reduced={reduced} activeIndex={active} pinned={pinned} onSelect={select} />
 
           <div className="space-y-4">
-            <div className="rounded-[1.6rem] border border-white/10 bg-charcoal p-5 sm:p-6">
+            <div className="rounded-[1.6rem] border border-white/10 bg-charcoal p-5 sm:p-6" data-scroll-reveal-item="01">
               <p className="text-xs uppercase tracking-widest text-quiet">City spotlight</p>
               <p className="mt-2 font-display text-2xl font-semibold text-harmattan">
                 {city.name}
@@ -63,10 +63,10 @@ export function NetworkSection() {
             </div>
 
             <div className="hidden space-y-2 md:block">
-              {city.threads.slice(1).map((thread) => (
+              {city.threads.slice(1).map((thread, index) => (
                 <div
                   key={`${city.id}-${thread.person}`}
-                  className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3"
+                  className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3" data-scroll-reveal-item={String(index + 2).padStart(2, "0")}
                 >
                   <img
                     src={thread.avatar}

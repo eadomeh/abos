@@ -128,8 +128,8 @@ export function WhatsappThread() {
       </div>
 
       <div className="abos-wa3d-stage relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#070d12] px-3 py-8 sm:px-8 sm:py-12">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(110,231,183,.14),transparent_28%),radial-gradient(circle_at_88%_88%,rgba(52,211,153,.08),transparent_24%)]" />
-        <div className="abos-wa3d-grid pointer-events-none absolute inset-0 opacity-40" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(110,231,183,.14),transparent_28%),radial-gradient(circle_at_88%_88%,rgba(52,211,153,.08),transparent_24%)]" data-scroll-depth="7" />
+        <div className="abos-wa3d-grid pointer-events-none absolute inset-0 opacity-40" data-scroll-depth="3" />
 
         <div className="relative grid items-center gap-6 lg:grid-cols-[210px_minmax(0,1fr)_230px]">
           <aside className="abos-wa3d-rail hidden lg:block">
