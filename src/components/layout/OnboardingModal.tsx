@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   Building2, Store, UtensilsCrossed, Wrench, Scissors, Shirt, Watch,
   Smartphone, Home, Heart, Sparkles, X, Loader2, AlertCircle, ArrowRight,
@@ -40,11 +41,18 @@ const countries = [
 
 export default function OnboardingModal({ onClose }: OnboardingModalProps) {
   const { createBusiness } = useBusiness();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [ownerName, setOwnerName] = useState('');
+  const [ownerName, setOwnerName] = useState(() => {
+    const profileName =
+      user?.user_metadata?.full_name ??
+      user?.user_metadata?.name ??
+      user?.user_metadata?.display_name;
+    return typeof profileName === 'string' ? profileName.trim() : '';
+  });
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [country, setCountry] = useState('Nigeria');

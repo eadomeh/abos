@@ -11,8 +11,20 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboarding }: TopBarProps) {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { businesses, activeBusiness, switchBusiness } = useBusiness();
+  const profileMetaName = [
+    user?.user_metadata?.full_name,
+    user?.user_metadata?.name,
+    user?.user_metadata?.display_name,
+  ].find((value) => typeof value === 'string' && value.trim().length > 0)?.trim();
+  const profileName =
+    activeBusiness?.owner_name?.trim() ||
+    profileMetaName ||
+    user?.email ||
+    activeBusiness?.name ||
+    'ABOS Account';
+  const profileInitial = profileName.charAt(0).toUpperCase() || 'A';
   const [bizDropdown, setBizDropdown] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
   const bizRef = useRef<HTMLDivElement>(null);
@@ -108,7 +120,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
           aria-label="Open workspace menu"
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-sm font-medium text-white">
-            {activeBusiness?.owner_name?.trim()?.[0]?.toUpperCase() ?? activeBusiness?.name?.[0]?.toUpperCase() ?? '?'}
+            {profileInitial}
           </div>
           <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${userDropdown ? 'rotate-180' : ''}`} />
         </button>
@@ -118,11 +130,11 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
             <div className="p-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500/80 to-teal-700 flex items-center justify-center text-sm font-medium text-white">
-                  {activeBusiness?.owner_name?.trim()?.[0]?.toUpperCase() ?? activeBusiness?.name?.[0]?.toUpperCase() ?? '?'}
+                  {profileInitial}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{activeBusiness?.owner_name || activeBusiness?.name || 'Workspace'}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">{activeBusiness?.role || 'Member'}</p>
+                  <p className="text-sm text-white truncate">{profileName}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">{activeBusiness?.role || 'Personal account'}</p>
                 </div>
               </div>
             </div>

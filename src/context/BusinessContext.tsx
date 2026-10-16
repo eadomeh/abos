@@ -19,7 +19,7 @@ interface BusinessContextValue {
   activeBusiness: BusinessWithMembership | null;
   loading: boolean;
   switchBusiness: (businessId: string) => void;
-  refreshBusinesses: () => Promise<void>;
+  refreshBusinesses: (preferredBusinessId?: string) => Promise<void>;
   createBusiness: (input: CreateBusinessInput) => Promise<{ error: string | null }>;
 }
 
@@ -33,7 +33,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const [activeBusiness, setActiveBusiness] = useState<BusinessWithMembership | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshBusinesses = useCallback(async () => {
+  const refreshBusinesses = useCallback(async (preferredBusinessId?: string) => {
     if (!user) {
       setBusinesses([]);
       setActiveBusiness(null);
@@ -105,7 +105,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const storedId = localStorage.getItem(STORAGE_KEY);
+    const storedId = preferredBusinessId ?? localStorage.getItem(STORAGE_KEY);
     const found = storedId ? mapped.find((b) => b.id === storedId) : null;
     const next = found ?? mapped[0];
     setActiveBusiness(next);
@@ -154,7 +154,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
 
     if (memError) return { error: memError.message };
 
-    await refreshBusinesses();
+    await refreshBusinesses(biz.id);
     return { error: null };
   }, [user, refreshBusinesses]);
 
