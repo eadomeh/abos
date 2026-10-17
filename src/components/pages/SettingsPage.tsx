@@ -22,7 +22,7 @@ type FacebookSdk = {
       config_id: string;
       response_type: 'code';
       override_default_response_type: boolean;
-      extras: {};
+      extras: Record<string, unknown>;
     },
   ) => void;
 };
@@ -75,7 +75,7 @@ export default function SettingsPage() {
         })}
       </div>
 
-      {tab === 'business' && <BusinessTab businessId={activeBusiness.id} canEdit={isOwner} />}
+      {tab === 'business' && <BusinessTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner} />}
       {tab === 'whatsapp' && <WhatsAppTab businessId={activeBusiness.id} canEdit={isOwner} />}
       {tab === 'team' && <TeamTab businessId={activeBusiness.id} isOwner={isOwner} currentUserId={user?.id ?? ''} />}
       {tab === 'danger' && <DangerTab businessId={activeBusiness.id} businessName={activeBusiness.name} canDelete={isOwner} onDeleted={() => refreshBusinesses()} />}
