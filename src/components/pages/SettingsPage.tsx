@@ -233,41 +233,46 @@ function TeamTab({ businessId, isOwner, currentUserId }: {
     setError(null);
     setInviteLoading(true);
 
-    // Look up user by email - in Supabase we need to query auth.users
-    // Since we can't directly, we'll use a different approach:
-    // Try to find the user via their email in auth.users using a helper
-    const { data: userData, error: userError } = await supabase
-      .rpc('get_user_id_by_email', { email: inviteEmail.trim() });
+    const { data: inviteResult, error: inviteError } =
+      await supabase.functions.invoke<{
+        success?: boolean;
+        error?: string;
+        message?: string;
+      }>('business-team-invite', {
+        body: {
+          businessId,
+          email: inviteEmail.trim(),
+          role: inviteRole,
+        },
+      });
 
-    if (userError || !userData) {
-      setError('Could not find a user with that email. They need to sign up first.');
+    let inviteMessage = inviteResult?.error;
+
+    // Edge Functions may return an HTTP error with its useful message
+    // on the error context instead of the data result.
+    if (inviteError) {
+      const context = (inviteError as unknown as { context?: Response }).context;
+      if (context) {
+        try {
+          const body = await context.clone().json() as { error?: unknown };
+          if (typeof body.error === 'string') inviteMessage = body.error;
+        } catch {
+          // Use the safe fallback below if the response isn't JSON.
+        }
+      }
+    }
+
+    if (inviteError || !inviteResult?.success) {
+      setError(inviteMessage || 'Could not add this team member. Please try again.');
       setInviteLoading(false);
       return;
     }
 
-    const userId = userData as string;
-
-    // Check if already a member
-    const existing = members.find((m) => m.user_id === userId);
-    if (existing) {
-      setError('This person is already a team member.');
-      setInviteLoading(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase
-      .from('business_memberships')
-      .insert({ business_id: businessId, user_id: userId, role: inviteRole });
-
-    if (insertError) {
-      setError('Could not add team member. They may need to create an account first.');
-      setInviteLoading(false);
-    } else {
-      setShowInvite(false);
-      setInviteEmail('');
-      setInviteRole('agent');
-      fetchMembers();
-    }
+    setShowInvite(false);
+    setInviteEmail('');
+    setInviteRole('agent');
+    await fetchMembers();
+    setInviteLoading(false);
   };
 
   const handleRemoveMember = async (memberId: string, userId: string) => {
