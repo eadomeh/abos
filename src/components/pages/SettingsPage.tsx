@@ -931,25 +931,19 @@ function DangerTab({ businessId, businessName, canDelete, onDeleted }: {
     setError(null);
     setLoading(true);
 
-    // Delete memberships first, then business
-    const { error: memError } = await supabase
-      .from('business_memberships')
-      .delete()
-      .eq('business_id', businessId);
-
-    if (memError) {
-      setError('Could not remove team members. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    const { error: bizError } = await supabase
+    // Delete the business in one database request. PostgreSQL cascades
+    // its dependent records and memberships in the same transaction.
+    const { data: deletedBusiness, error: bizError } = await supabase
       .from('businesses')
       .delete()
-      .eq('id', businessId);
+      .eq('id', businessId)
+      .select('id')
+      .maybeSingle();
 
-    if (bizError) {
-      setError('Could not delete the business. Please try again.');
+    if (bizError || !deletedBusiness) {
+      setError(
+        'Could not confirm business deletion. Your workspace has not been confirmed deleted; please try again or contact support.'
+      );
       setLoading(false);
     } else {
       onDeleted();
