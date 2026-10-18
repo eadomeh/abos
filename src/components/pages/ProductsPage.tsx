@@ -9,6 +9,8 @@ import {
 
 export default function ProductsPage() {
   const { activeBusiness } = useBusiness();
+  const canManageProducts = ['owner', 'admin', 'agent'].includes(activeBusiness?.role ?? '');
+  const canDeleteProducts = activeBusiness?.role === 'owner';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -54,15 +56,21 @@ export default function ProductsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Products</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage your product catalog and inventory</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {canManageProducts
+              ? 'Manage your product catalog and inventory'
+              : 'Read-only view of your product catalog and inventory'}
+          </p>
         </div>
-        <button
-          onClick={() => { setEditingProduct(null); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Add Product</span>
-        </button>
+        {canManageProducts && (
+          <button
+            onClick={() => { setEditingProduct(null); setShowModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Product</span>
+          </button>
+        )}
       </div>
 
       {/* Search + Filter */}
@@ -113,7 +121,7 @@ export default function ProductsPage() {
               ? 'Add your first product to start building your catalog.'
               : 'Try a different search or filter.'}
           </p>
-          {products.length === 0 && (
+          {products.length === 0 && canManageProducts && (
             <button
               onClick={() => { setEditingProduct(null); setShowModal(true); }}
               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20"
@@ -131,32 +139,39 @@ export default function ProductsPage() {
                 <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center flex-shrink-0">
                   <Package className="w-5 h-5 text-slate-400" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    title="Adjust stock"
-                    onClick={() => setShowStockAdjust(product)}
-                    className="p-2 rounded-lg hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Edit product"
-                    onClick={() => { setEditingProduct(product); setShowModal(true); }}
-                    className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Delete product"
-                    onClick={() => setShowDeleteConfirm(product)}
-                    className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {canManageProducts && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      title="Adjust stock"
+                      aria-label={`Adjust stock for ${product.name}`}
+                      onClick={() => setShowStockAdjust(product)}
+                      className="p-2 rounded-lg hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-400 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Edit product"
+                      aria-label={`Edit ${product.name}`}
+                      onClick={() => { setEditingProduct(product); setShowModal(true); }}
+                      className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    {canDeleteProducts && (
+                      <button
+                        type="button"
+                        title="Delete product"
+                        aria-label={`Delete ${product.name}`}
+                        onClick={() => setShowDeleteConfirm(product)}
+                        className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 truncate">{product.name}</h3>
               {product.description && (
@@ -206,7 +221,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {showModal && (
+      {showModal && canManageProducts && (
         <ProductModal
           product={editingProduct}
           businessId={activeBusiness!.id}
@@ -216,7 +231,7 @@ export default function ProductsPage() {
         />
       )}
 
-      {showStockAdjust && (
+      {showStockAdjust && canManageProducts && (
         <StockAdjustModal
           product={showStockAdjust}
           onClose={() => setShowStockAdjust(null)}
@@ -224,7 +239,7 @@ export default function ProductsPage() {
         />
       )}
 
-      {showDeleteConfirm && (
+      {showDeleteConfirm && canDeleteProducts && (
         <DeleteConfirm
           product={showDeleteConfirm}
           onClose={() => setShowDeleteConfirm(null)}
