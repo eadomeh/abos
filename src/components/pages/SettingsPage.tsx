@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react'
 import { useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import ImageCropEditor from '@/components/ImageCropEditor';
+import { cropImageFile } from '@/lib/imageCrop';
 import type { BusinessMembership, BusinessRole } from '@/types/database';
 import {
   Building2, Users, AlertTriangle, Loader2,
@@ -98,6 +100,9 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   const [logoUrl, setLogoUrl] = useState(activeBusiness?.logo_url ?? '');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoZoom, setLogoZoom] = useState(1);
+  const [logoPositionX, setLogoPositionX] = useState(50);
+  const [logoPositionY, setLogoPositionY] = useState(50);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -167,17 +172,22 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
       let nextLogoUrl = logoUrl.trim() || null;
 
       if (logoFile) {
-        const extension = logoFile.type === 'image/jpeg'
-          ? 'jpg'
-          : logoFile.type.split('/')[1];
-        uploadedPath = `${businessId}/${crypto.randomUUID()}.${extension}`;
+        const croppedLogo = await cropImageFile(
+          logoFile, 1, logoZoom, logoPositionX, logoPositionY,
+        );
+
+        if (croppedLogo.size > 2 * 1024 * 1024) {
+          throw new Error('The cropped logo exceeds 2 MB. Reduce the zoom or choose a smaller image.');
+        }
+
+        uploadedPath = `${businessId}/${crypto.randomUUID()}.webp`;
 
         const { error: uploadError } = await supabase.storage
           .from('business-logos')
-          .upload(uploadedPath, logoFile, {
+          .upload(uploadedPath, croppedLogo, {
             cacheControl: '3600',
             upsert: false,
-            contentType: logoFile.type,
+            contentType: 'image/webp',
           });
 
         if (uploadError) {
@@ -237,6 +247,9 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
       setLogoUrl(nextLogoUrl ?? '');
       setLogoFile(null);
       setLogoPreview(null);
+      setLogoZoom(1);
+      setLogoPositionX(50);
+      setLogoPositionY(50);
       if (logoInputRef.current) logoInputRef.current.value = '';
       await refreshBusinesses();
       setSaved(true);
@@ -305,11 +318,28 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
               setError(null);
               setLogoFile(file);
               setLogoPreview(URL.createObjectURL(file));
+              setLogoZoom(1);
+              setLogoPositionX(50);
+              setLogoPositionY(50);
             }}
             className="block w-full mt-2 text-xs text-slate-400 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-emerald-500/10 file:text-emerald-300 hover:file:bg-emerald-500/20"
           />
         </div>
       </div>
+
+      {logoFile && logoPreview && (
+        <ImageCropEditor
+          src={logoPreview}
+          alt="Business logo crop preview"
+          aspectRatio={1}
+          zoom={logoZoom}
+          positionX={logoPositionX}
+          positionY={logoPositionY}
+          onZoomChange={setLogoZoom}
+          onPositionXChange={setLogoPositionX}
+          onPositionYChange={setLogoPositionY}
+        />
+      )}
 
       <div>
         <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">

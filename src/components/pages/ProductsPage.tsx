@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
+import ImageCropEditor from '@/components/ImageCropEditor';
+import { cropImageFile } from '@/lib/imageCrop';
 import type { Product } from '@/types/database';
 import {
   Package, Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
@@ -173,6 +175,19 @@ export default function ProductsPage() {
                   </div>
                 )}
               </div>
+              <div className="w-full aspect-[4/3] mb-4 overflow-hidden rounded-xl border border-white/[0.05] bg-white/[0.025] flex items-center justify-center">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                    onError={(event) => { event.currentTarget.style.opacity = '0.25'; }}
+                  />
+                ) : (
+                  <Package className="w-8 h-8 text-slate-700" />
+                )}
+              </div>
               <h3 className="text-sm font-semibold text-white mb-1 truncate">{product.name}</h3>
               {product.description && (
                 <p className="text-xs text-slate-500 mb-3 line-clamp-2">{product.description}</p>
@@ -266,9 +281,21 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
   const [sku, setSku] = useState(product?.sku ?? '');
   const [category, setCategory] = useState(product?.category ?? '');
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageZoom, setImageZoom] = useState(1);
+  const [imagePositionX, setImagePositionX] = useState(50);
+  const [imagePositionY, setImagePositionY] = useState(50);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview?.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -301,33 +328,95 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
       return;
     }
 
-    const payload = {
-      business_id: businessId,
-      name: name.trim(),
-      description: description.trim() || null,
-      price: numericPrice,
-      cost_price: numericCost,
-      currency,
-      stock_quantity: product ? product.stock_quantity : numericStock,
-      low_stock_threshold: numericThreshold,
-      sku: sku.trim() || null,
-      category: category.trim() || null,
-      image_url: imageUrl.trim() || null,
-      is_active: isActive,
-    };
+    const productId = product?.id ?? crypto.randomUUID();
+    let uploadedPath: string | null = null;
+    let nextImageUrl = imageUrl.trim() || null;
 
-    let result;
-    if (product) {
-      result = await supabase.from('products').update(payload).eq('id', product.id);
-    } else {
-      result = await supabase.from('products').insert(payload);
-    }
+    try {
+      if (imageFile) {
+        const croppedImage = await cropImageFile(
+          imageFile, 4 / 3, imageZoom, imagePositionX, imagePositionY,
+        );
 
-    if (result.error) {
-      setError('Could not save the product. Please try again.');
-      setLoading(false);
-    } else {
+        if (croppedImage.size > 5 * 1024 * 1024) {
+          throw new Error('The cropped product photo exceeds 5 MB. Choose a smaller image.');
+        }
+
+        const candidatePath =
+          `${businessId}/products/${productId}/${crypto.randomUUID()}.webp`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(candidatePath, croppedImage, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'image/webp',
+          });
+
+        if (uploadError) {
+          setError(`Photo upload failed: ${uploadError.message}`);
+          return;
+        }
+
+        uploadedPath = candidatePath;
+        const { data: publicUrl } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(candidatePath);
+        nextImageUrl = publicUrl.publicUrl;
+      }
+
+      const payload = {
+        business_id: businessId,
+        name: name.trim(),
+        description: description.trim() || null,
+        price: numericPrice,
+        cost_price: numericCost,
+        currency,
+        stock_quantity: product ? product.stock_quantity : numericStock,
+        low_stock_threshold: numericThreshold,
+        sku: sku.trim() || null,
+        category: category.trim() || null,
+        image_url: nextImageUrl,
+        is_active: isActive,
+      };
+
+      const result = product
+        ? await supabase.from('products').update(payload).eq('id', product.id)
+        : await supabase.from('products').insert({ ...payload, id: productId });
+
+      if (result.error) {
+        if (uploadedPath) {
+          await supabase.storage.from('product-images').remove([uploadedPath]);
+          uploadedPath = null;
+        }
+        setError(`Could not save the product: ${result.error.message}`);
+        return;
+      }
+
+      if (uploadedPath && product?.image_url) {
+        try {
+          const marker = '/storage/v1/object/public/product-images/';
+          const oldPath = new URL(product.image_url).pathname;
+          const markerIndex = oldPath.indexOf(marker);
+          if (markerIndex >= 0) {
+            const previousPath = decodeURIComponent(oldPath.slice(markerIndex + marker.length));
+            if (previousPath && previousPath !== uploadedPath) {
+              await supabase.storage.from('product-images').remove([previousPath]);
+            }
+          }
+        } catch {
+          // External image URLs do not need Storage cleanup.
+        }
+      }
+
       onSaved();
+    } catch (cause) {
+      if (uploadedPath) {
+        await supabase.storage.from('product-images').remove([uploadedPath]);
+      }
+      setError(cause instanceof Error ? cause.message : 'Could not save the product. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -408,10 +497,86 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
               placeholder="Optional" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Image URL</label>
-            <input type="text" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="Optional" className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
+              Product photo
+            </label>
+
+            {imagePreview ? (
+              <ImageCropEditor
+                src={imagePreview}
+                alt="Product photo crop preview"
+                aspectRatio={4 / 3}
+                zoom={imageZoom}
+                positionX={imagePositionX}
+                positionY={imagePositionY}
+                onZoomChange={setImageZoom}
+                onPositionXChange={setImagePositionX}
+                onPositionYChange={setImagePositionY}
+              />
+            ) : imageUrl ? (
+              <div className="w-full aspect-[4/3] overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
+                <img
+                  src={imageUrl}
+                  alt="Current product photo"
+                  className="w-full h-full object-cover"
+                  onError={(event) => { event.currentTarget.style.opacity = '0.25'; }}
+                />
+              </div>
+            ) : (
+              <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-white/[0.12] bg-white/[0.02] flex flex-col items-center justify-center gap-2">
+                <Package className="w-8 h-8 text-slate-600" />
+                <p className="text-xs text-slate-500">Select a photo to preview and adjust it</p>
+              </div>
+            )}
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                if (!file) return;
+
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                  setError('Product photos must be JPEG, PNG, or WebP.');
+                  event.currentTarget.value = '';
+                  return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                  setError('Product photos must be 5 MB or smaller.');
+                  event.currentTarget.value = '';
+                  return;
+                }
+
+                setError(null);
+                setImageFile(file);
+                setImagePreview(URL.createObjectURL(file));
+                setImageZoom(1);
+                setImagePositionX(50);
+                setImagePositionY(50);
+              }}
+              className="block w-full text-xs text-slate-400 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-emerald-500/10 file:text-emerald-300 hover:file:bg-emerald-500/20"
+            />
+            <p className="text-[11px] text-slate-600">
+              JPEG, PNG or WebP · Maximum 5 MB. Adjust the 4:3 crop before saving.
+            </p>
+            {imagePreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setImageFile(null);
+                  setImagePreview(null);
+                  setImageZoom(1);
+                  setImagePositionX(50);
+                  setImagePositionY(50);
+                  if (imageInputRef.current) imageInputRef.current.value = '';
+                }}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                Discard selected photo
+              </button>
+            )}
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)}
