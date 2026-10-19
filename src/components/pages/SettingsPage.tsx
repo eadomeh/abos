@@ -86,41 +86,168 @@ export default function SettingsPage() {
 function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boolean }) {
   const { activeBusiness, refreshBusinesses } = useBusiness();
   const [name, setName] = useState(activeBusiness?.name ?? '');
+  const [ownerName, setOwnerName] = useState(activeBusiness?.owner_name ?? '');
   const [description, setDescription] = useState(activeBusiness?.description ?? '');
+  const [categoriesInput, setCategoriesInput] = useState(
+    (activeBusiness?.categories ?? (activeBusiness?.category ? [activeBusiness.category] : [])).join(', ')
+  );
   const [phone, setPhone] = useState(activeBusiness?.phone ?? '');
   const [whatsapp, setWhatsapp] = useState(activeBusiness?.whatsapp_number ?? '');
   const [country, setCountry] = useState(activeBusiness?.country ?? '');
   const [currency, setCurrency] = useState(activeBusiness?.currency ?? 'NGN');
+  const [logoUrl, setLogoUrl] = useState(activeBusiness?.logo_url ?? '');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError('Business name is required'); return; }
+
+    if (!name.trim()) {
+      setError('Business name is required.');
+      return;
+    }
+
+    if (ownerName.trim().length > 100) {
+      setError('Owner name must be 100 characters or fewer.');
+      return;
+    }
+
+    const rawCategories = categoriesInput
+      .split(/[,\n;]/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const categories = [...new Set(rawCategories)];
+
+    if (categories.length > 8) {
+      setError('Add no more than 8 business categories.');
+      return;
+    }
+
+    if (categories.some((value) => value.length > 40)) {
+      setError('Each category must be 40 characters or fewer.');
+      return;
+    }
+
+    const currencyCode = currency.trim().toUpperCase() || 'NGN';
+    if (!/^[A-Z]{3}$/.test(currencyCode)) {
+      setError('Enter a valid three-letter currency code, such as NGN, GHS, GBP, or USD.');
+      return;
+    }
+
+    if (logoFile) {
+      const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+      if (!validTypes.includes(logoFile.type)) {
+        setError('Logo must be a PNG, JPEG, or WebP image.');
+        return;
+      }
+      if (logoFile.size > 2 * 1024 * 1024) {
+        setError('Logo must be 2 MB or smaller.');
+        return;
+      }
+    }
+
     setError(null);
+    setSaved(false);
     setLoading(true);
 
-    const { error: updateError } = await supabase
-      .from('businesses')
-      .update({
-        name: name.trim(),
-        description: description.trim() || null,
-        phone: phone.trim() || null,
-        whatsapp_number: whatsapp.trim() || null,
-        country: country.trim() || null,
-        currency: currency.trim() || 'NGN',
-      })
-      .eq('id', businessId);
+    let uploadedPath: string | null = null;
+    const oldLogoUrl = activeBusiness?.logo_url ?? null;
 
-    if (updateError) {
-      setError('Could not save changes. Please try again.');
-      setLoading(false);
-    } else {
-      setSaved(true);
-      setLoading(false);
+    try {
+      let nextLogoUrl = logoUrl.trim() || null;
+
+      if (logoFile) {
+        const extension = logoFile.type === 'image/jpeg'
+          ? 'jpg'
+          : logoFile.type.split('/')[1];
+        uploadedPath = `${businessId}/${crypto.randomUUID()}.${extension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('business-logos')
+          .upload(uploadedPath, logoFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: logoFile.type,
+          });
+
+        if (uploadError) {
+          setError(`Logo upload failed: ${uploadError.message}`);
+          return;
+        }
+
+        const { data: publicUrl } = supabase.storage
+          .from('business-logos')
+          .getPublicUrl(uploadedPath);
+
+        nextLogoUrl = publicUrl.publicUrl;
+      }
+
+      const { error: updateError } = await supabase
+        .from('businesses')
+        .update({
+          name: name.trim(),
+          owner_name: ownerName.trim() || null,
+          description: description.trim() || null,
+          category: categories[0] ?? null,
+          categories,
+          logo_url: nextLogoUrl,
+          phone: phone.trim() || null,
+          whatsapp_number: whatsapp.trim() || null,
+          country: country.trim() || null,
+          currency: currencyCode,
+        })
+        .eq('id', businessId);
+
+      if (updateError) {
+        if (uploadedPath) {
+          await supabase.storage.from('business-logos').remove([uploadedPath]);
+        }
+        setError(`Could not save the business profile: ${updateError.message}`);
+        return;
+      }
+
+      // Remove the previous logo only after the new profile has saved.
+      if (uploadedPath && oldLogoUrl) {
+        try {
+          const oldPathMarker = '/storage/v1/object/public/business-logos/';
+          const oldUrlPath = new URL(oldLogoUrl).pathname;
+          const markerIndex = oldUrlPath.indexOf(oldPathMarker);
+
+          if (markerIndex >= 0) {
+            const previousPath = decodeURIComponent(oldUrlPath.slice(markerIndex + oldPathMarker.length));
+            if (previousPath && previousPath !== uploadedPath) {
+              await supabase.storage.from('business-logos').remove([previousPath]);
+            }
+          }
+        } catch {
+          // A logo hosted outside this bucket does not need to be removed.
+        }
+      }
+
+      setLogoUrl(nextLogoUrl ?? '');
+      setLogoFile(null);
+      setLogoPreview(null);
+      if (logoInputRef.current) logoInputRef.current.value = '';
       await refreshBusinesses();
+      setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+    } catch (cause) {
+      if (uploadedPath) {
+        await supabase.storage.from('business-logos').remove([uploadedPath]);
+      }
+      setError(cause instanceof Error ? cause.message : 'Could not save the business profile. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -136,17 +263,102 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   return (
     <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 space-y-5">
       <div>
+        <h3 className="text-sm font-semibold text-white">Business identity</h3>
+        <p className="text-xs text-slate-500 mt-1">Keep your business information accurate for your team and customer-facing channels.</p>
+      </div>
+
+      <div className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.025] border border-white/[0.06]">
+        {logoPreview || logoUrl ? (
+          <img
+            src={logoPreview ?? logoUrl}
+            alt="Business logo preview"
+            className="w-16 h-16 rounded-xl object-cover border border-white/[0.08] bg-white/[0.03]"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-xl border border-white/[0.08] bg-white/[0.04] flex items-center justify-center">
+            <Building2 className="w-7 h-7 text-slate-500" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white">Business logo</p>
+          <p className="text-xs text-slate-500 mt-1">PNG, JPEG, or WebP · Maximum 2 MB</p>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              if (!file) return;
+
+              if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+                setError('Logo must be a PNG, JPEG, or WebP image.');
+                event.target.value = '';
+                return;
+              }
+
+              if (file.size > 2 * 1024 * 1024) {
+                setError('Logo must be 2 MB or smaller.');
+                event.target.value = '';
+                return;
+              }
+
+              setError(null);
+              setLogoFile(file);
+              setLogoPreview(URL.createObjectURL(file));
+            }}
+            className="block w-full mt-2 text-xs text-slate-400 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-emerald-500/10 file:text-emerald-300 hover:file:bg-emerald-500/20"
+          />
+        </div>
+      </div>
+
+      <div>
         <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
           <Building2 className="w-3 h-3" /> Business Name
         </label>
-        <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-          className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+        <input
+          type="text"
+          required
+          maxLength={120}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Owner / Contact Name</label>
+        <input
+          type="text"
+          maxLength={100}
+          value={ownerName}
+          onChange={(e) => setOwnerName(e.target.value)}
+          placeholder="Person responsible for this business"
+          className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Business Categories</label>
+        <input
+          type="text"
+          value={categoriesInput}
+          onChange={(e) => setCategoriesInput(e.target.value)}
+          placeholder="Perfume, Beauty, Retail"
+          className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+        />
+        <p className="text-[11px] text-slate-600 mt-1.5">Separate categories with commas. Use up to 8 categories.</p>
       </div>
 
       <div>
         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-          className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all resize-none" />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          maxLength={1500}
+          placeholder="What does your business sell or provide?"
+          className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all resize-none"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -154,15 +366,25 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
             <Phone className="w-3.5 h-3.5" /> Phone
           </label>
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Business phone number"
+            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+          />
         </div>
         <div>
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
             <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
           </label>
-          <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
-            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="WhatsApp Business number"
+            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+          />
         </div>
       </div>
 
@@ -171,13 +393,25 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
           <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">
             <MapPin className="w-3.5 h-3.5" /> Country
           </label>
-          <input type="text" value={country} onChange={(e) => setCountry(e.target.value)}
-            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+          <input
+            type="text"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            placeholder="Country"
+            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Currency</label>
-          <input type="text" value={currency} onChange={(e) => setCurrency(e.target.value)}
-            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all" />
+          <input
+            type="text"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder="NGN"
+            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+          />
+          <p className="text-[11px] text-slate-600 mt-1.5">Use a three-letter currency code.</p>
         </div>
       </div>
 
@@ -189,9 +423,14 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
       )}
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={loading}
-          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{saved ? <><Check className="w-4 h-4" /> Saved!</> : <>Save Changes <ArrowRight className="w-4 h-4" /></>}</>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+        >
+          {loading
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <>{saved ? <><Check className="w-4 h-4" /> Saved!</> : <>Save Profile <ArrowRight className="w-4 h-4" /></>}</>}
         </button>
       </div>
     </form>
