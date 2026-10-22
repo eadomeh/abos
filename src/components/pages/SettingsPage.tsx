@@ -8,7 +8,7 @@ import SettingsSectionNav, { type SettingsSectionId } from '@/components/setting
 import BusinessKnowledgeTab from '@/components/settings/BusinessKnowledgeTab';
 import type { AiReplyLanguageMode, AiReplyTone, AiReplyLength, BusinessMembership, BusinessRole } from '@/types/database';
 import {
-  Building2, Users, AlertTriangle, Loader2, Settings2,
+  ArrowLeft, Building2, Users, AlertTriangle, Loader2, Settings2,
   AlertCircle, Check, Trash2, UserPlus, Shield,
   Mail, Phone, MapPin, MessageCircle, ArrowRight, Crown,
   CheckCircle2, CircleDot,
@@ -41,14 +41,31 @@ export default function SettingsPage() {
   const { activeBusiness, refreshBusinesses } = useBusiness();
   const { user } = useAuth();
   const [tab, setTab] = useState<SettingsSectionId>('business');
+  const [mobileSectionOpen, setMobileSectionOpen] = useState(false);
 
   if (!activeBusiness) return null;
 
   const isOwner = activeBusiness.role === 'owner';
+  const sectionTitles: Record<SettingsSectionId, string> = {
+    business: 'Business profile',
+    ai: 'AI agent',
+    knowledge: 'Business knowledge',
+    whatsapp: 'WhatsApp',
+    team: 'Team & permissions',
+    danger: 'Danger zone',
+  };
+  const sectionDescriptions: Record<SettingsSectionId, string> = {
+    business: 'Manage your business identity and contact details.',
+    ai: 'Control the language, tone and style of customer-facing replies.',
+    knowledge: 'Maintain verified business facts, answers and policies for your AI agent.',
+    whatsapp: 'Manage your WhatsApp Business connection and messaging setup.',
+    team: 'Manage workspace members and their access.',
+    danger: 'Review irreversible actions for this workspace.',
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-5 md:p-8 overflow-x-hidden">
-      <header className="mb-6 md:mb-8">
+      <header className={`mb-6 md:mb-8 ${mobileSectionOpen ? 'hidden md:block' : ''}`}>
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300/90 mb-2">
@@ -66,15 +83,30 @@ export default function SettingsPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)] gap-4 sm:gap-5 lg:gap-7 items-start">
-        <div className="min-w-0 md:sticky md:top-4">
+        <div className={`min-w-0 md:sticky md:top-4 ${mobileSectionOpen ? 'hidden md:block' : 'block'}`}>
           <SettingsSectionNav
             activeSection={tab}
-            onSelect={setTab}
+            onSelect={(section) => { setTab(section); setMobileSectionOpen(true); }}
             businessName={activeBusiness.name}
             role={activeBusiness.role}
           />
         </div>
-        <div className="min-w-0 space-y-4">
+        <div className={`min-w-0 space-y-4 ${mobileSectionOpen ? 'block' : 'hidden md:block'}`}>
+          <div className="md:hidden mb-5">
+            <button
+              type="button"
+              onClick={() => setMobileSectionOpen(false)}
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 rounded-lg py-2 pr-3 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Settings</span>
+            </button>
+            <div className="mt-3 border-b border-white/[0.07] pb-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300/80">Settings</p>
+              <h2 className="text-xl font-bold tracking-tight text-white mt-1">{sectionTitles[tab]}</h2>
+              <p className="text-sm leading-relaxed text-slate-400 mt-1">{sectionDescriptions[tab]}</p>
+            </div>
+          </div>
           {tab === 'business' && <BusinessTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner} />}
           {tab === 'ai' && <AiAgentSettingsTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner || activeBusiness.role === 'admin'} />}
           {tab === 'knowledge' && <BusinessKnowledgeTab key={activeBusiness.id} businessId={activeBusiness.id} userId={user?.id ?? ''} canEdit={isOwner || activeBusiness.role === 'admin'} />}
