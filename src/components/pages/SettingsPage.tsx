@@ -4,9 +4,9 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import ImageCropEditor from '@/components/ImageCropEditor';
 import { cropImageFile } from '@/lib/imageCrop';
-import type { BusinessMembership, BusinessRole } from '@/types/database';
+import type { AiReplyLanguageMode, AiReplyTone, AiReplyLength, BusinessMembership, BusinessRole } from '@/types/database';
 import {
-  Building2, Users, AlertTriangle, Loader2,
+  Building2, Users, AlertTriangle, Loader2, Bot,
   AlertCircle, Check, Trash2, UserPlus, Shield,
   Mail, Phone, MapPin, MessageCircle, ArrowRight, Crown,
   CheckCircle2, CircleDot,
@@ -38,49 +38,50 @@ declare global {
 export default function SettingsPage() {
   const { activeBusiness, refreshBusinesses } = useBusiness();
   const { user } = useAuth();
-  const [tab, setTab] = useState<'business' | 'whatsapp' | 'team' | 'danger'>('business');
+  const [tab, setTab] = useState<'business' | 'ai' | 'whatsapp' | 'team' | 'danger'>('business');
 
   if (!activeBusiness) return null;
 
   const isOwner = activeBusiness.role === 'owner';
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-8 overflow-x-hidden">
+    <div className="w-full max-w-6xl mx-auto p-4 md:p-8 overflow-x-hidden">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
         <p className="text-sm text-slate-500 mt-1">Manage your business and team</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 p-1 glass rounded-xl max-w-full overflow-x-auto mb-6">
-        {([
-          { id: 'business', label: 'Business', icon: Building2 },
-          { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
-          { id: 'team', label: 'Team', icon: Users },
-          { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
-        ] as const).map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
-                tab === t.id
-                  ? t.id === 'danger' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {t.label}
-            </button>
-          );
-        })}
+      <div className="grid grid-cols-1 md:grid-cols-[190px_minmax(0,1fr)] gap-4 md:gap-6">
+        <nav aria-label="Settings sections" className="glass rounded-xl p-2 flex flex-col gap-1 h-fit">
+          {([
+            { id: 'business', label: 'Business', icon: Building2 },
+            { id: 'ai', label: 'AI Agent', icon: Bot },
+            { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+            { id: 'team', label: 'Team', icon: Users },
+            { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+          ] as const).map((item) => {
+            const Icon = item.icon;
+            const selected = tab === item.id;
+            return (
+              <button key={item.id} type="button" aria-current={selected ? 'page' : undefined}
+                onClick={() => setTab(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-left transition-all ${
+                  selected ? item.id === 'danger' ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-300'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
+                }`}>
+                <Icon className="w-4 h-4 shrink-0" /><span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="min-w-0">
+          {tab === 'business' && <BusinessTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner} />}
+          {tab === 'ai' && <AiAgentSettingsTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner || activeBusiness.role === 'admin'} />}
+          {tab === 'whatsapp' && <WhatsAppTab businessId={activeBusiness.id} canEdit={isOwner} />}
+          {tab === 'team' && <TeamTab businessId={activeBusiness.id} isOwner={isOwner} currentUserId={user?.id ?? ''} />}
+          {tab === 'danger' && <DangerTab businessId={activeBusiness.id} businessName={activeBusiness.name} canDelete={isOwner} onDeleted={() => refreshBusinesses()} />}
+        </div>
       </div>
-
-      {tab === 'business' && <BusinessTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner} />}
-      {tab === 'whatsapp' && <WhatsAppTab businessId={activeBusiness.id} canEdit={isOwner} />}
-      {tab === 'team' && <TeamTab businessId={activeBusiness.id} isOwner={isOwner} currentUserId={user?.id ?? ''} />}
-      {tab === 'danger' && <DangerTab businessId={activeBusiness.id} businessName={activeBusiness.name} canDelete={isOwner} onDeleted={() => refreshBusinesses()} />}
     </div>
   );
 }
@@ -463,6 +464,84 @@ function BusinessTab({ businessId, canEdit }: { businessId: string; canEdit: boo
             : <>{saved ? <><Check className="w-4 h-4" /> Saved!</> : <>Save Profile <ArrowRight className="w-4 h-4" /></>}</>}
         </button>
       </div>
+    </form>
+  );
+}
+
+
+function AiAgentSettingsTab({ businessId, canEdit }: { businessId: string; canEdit: boolean }) {
+  const [language, setLanguage] = useState<AiReplyLanguageMode>('automatic');
+  const [tone, setTone] = useState<AiReplyTone>('friendly');
+  const [length, setLength] = useState<AiReplyLength>('balanced');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: queryError } = await supabase.from('business_ai_settings')
+          .select('language_mode,tone,response_length').eq('business_id', businessId).maybeSingle();
+        if (queryError) throw queryError;
+        if (!cancelled && data) {
+          setLanguage(data.language_mode as AiReplyLanguageMode);
+          setTone(data.tone as AiReplyTone);
+          setLength(data.response_length as AiReplyLength);
+        }
+      } catch (cause) {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Could not load AI settings.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [businessId]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!canEdit) return;
+    setSaving(true); setSaved(false); setError(null);
+    try {
+      const { error: saveError } = await supabase.from('business_ai_settings').upsert({
+        business_id: businessId, language_mode: language, tone,
+        response_length: length, updated_at: new Date().toISOString(),
+      }, { onConflict: 'business_id' });
+      if (saveError) throw saveError;
+      setSaved(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save AI settings.');
+    } finally { setSaving(false); }
+  };
+
+  const selectClass = 'w-full px-3 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500/50 disabled:opacity-50';
+  const disabled = loading || saving || !canEdit;
+
+  return (
+    <form onSubmit={submit} className="glass rounded-2xl p-5 md:p-6 space-y-5">
+      <div><h2 className="text-sm font-semibold text-white">AI agent reply settings</h2>
+        <p className="text-xs text-slate-500 mt-1">Control how your agent speaks to customers. Preferences are saved for this business.</p></div>
+      {!canEdit && <p className="text-xs text-slate-400"><Shield className="inline w-4 h-4 mr-1" />Only owners and admins can edit these settings.</p>}
+      <div className="space-y-1.5"><label htmlFor="ai-language" className="block text-xs font-medium text-slate-300">Reply language</label>
+        <select id="ai-language" className={selectClass} value={language} disabled={disabled} onChange={e => {setLanguage(e.target.value as AiReplyLanguageMode);setSaved(false);}}>
+          <option value="automatic">Automatic — follow the customer</option><option value="pidgin">Nigerian Pidgin</option>
+          <option value="standard_english">Standard English</option><option value="professional_english">Professional English</option>
+        </select><p className="text-[11px] text-slate-500">Automatic preserves current language detection.</p></div>
+      <div className="space-y-1.5"><label htmlFor="ai-tone" className="block text-xs font-medium text-slate-300">Reply tone</label>
+        <select id="ai-tone" className={selectClass} value={tone} disabled={disabled} onChange={e => {setTone(e.target.value as AiReplyTone);setSaved(false);}}>
+          <option value="friendly">Friendly and helpful</option><option value="professional">Professional and polished</option><option value="casual">Relaxed and conversational</option>
+        </select></div>
+      <div className="space-y-1.5"><label htmlFor="ai-length" className="block text-xs font-medium text-slate-300">Reply length</label>
+        <select id="ai-length" className={selectClass} value={length} disabled={disabled} onChange={e => {setLength(e.target.value as AiReplyLength);setSaved(false);}}>
+          <option value="concise">Concise</option><option value="balanced">Balanced</option><option value="detailed">Detailed</option>
+        </select></div>
+      {error && <div role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-300">{error}</div>}
+      <button type="submit" disabled={disabled} className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-medium rounded-xl disabled:opacity-50">
+        {loading || saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <><Check className="w-4 h-4" /> Saved</> : 'Save AI settings'}
+      </button>
     </form>
   );
 }

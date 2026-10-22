@@ -231,12 +231,15 @@ async function requireBusinessAccess(
 }
 
 async function loadContext(businessId: string, conversationId: string | null) {
-  const [businessRes, conversationRes, stateRes, messagesRes] = await Promise.all([
+  const [businessRes, replyPreferencesRes, conversationRes, stateRes, messagesRes] = await Promise.all([
     supabase
       .from("businesses")
       .select("id,name,description,category,country,currency,phone,whatsapp_number")
       .eq("id", businessId)
       .maybeSingle(),
+
+    supabase.from("business_ai_settings")
+      .select("language_mode,tone,response_length").eq("business_id", businessId).maybeSingle(),
 
     conversationId
       ? supabase
@@ -268,6 +271,7 @@ async function loadContext(businessId: string, conversationId: string | null) {
   ]);
 
   if (businessRes.error) throw businessRes.error;
+  if (replyPreferencesRes.error) throw replyPreferencesRes.error;
   if (!businessRes.data) throw new Error("Business not found");
   if (conversationRes.error) throw conversationRes.error;
   if (stateRes.error) throw stateRes.error;
@@ -312,6 +316,11 @@ async function loadContext(businessId: string, conversationId: string | null) {
 
   return {
     business: businessRes.data,
+    replyPreferences: {
+      language_mode: replyPreferencesRes.data?.language_mode ?? "automatic",
+      tone: replyPreferencesRes.data?.tone ?? "friendly",
+      response_length: replyPreferencesRes.data?.response_length ?? "balanced",
+    },
     conversation: conversationRes.data,
     customer,
     recentLead,
@@ -1178,6 +1187,23 @@ function buildDeveloperPrompt(
   audience: "owner" | "customer",
   register: Register | null,
 ) {
+  const prefs = context.replyPreferences;
+  const toneInstruction = prefs.tone === "professional"
+    ? "Use polished, respectful business language. Avoid overfamiliar slang."
+    : prefs.tone === "casual"
+    ? "Use relaxed, conversational language while staying respectful."
+    : "Be friendly, helpful, natural, and respectful.";
+  const lengthInstruction = prefs.response_length === "concise"
+    ? "Keep replies brief, usually one short sentence unless more is needed. Avoid filler."
+    : prefs.response_length === "detailed"
+    ? "Answer fully with short paragraphs or brief lists when useful. Avoid filler and keep WhatsApp readable."
+    : "Keep replies concise and natural: usually 1 to 3 short sentences, at most one question.";
+  const standardLanguageInstruction = prefs.language_mode === "professional_english"
+    ? "LANGUAGE: The business selected professional English. Use polished English consistently."
+    : prefs.language_mode === "standard_english"
+    ? "LANGUAGE: The business selected standard English. Use clear, natural English consistently."
+    : "LANGUAGE: The customer asked for plain English. Use clear, warm, professional English consistently.";
+
   const hasAssistantHistory = context.recentMessages.some(
     (m) => m.direction === "outgoing",
   );
@@ -1193,7 +1219,7 @@ function buildDeveloperPrompt(
         ABOS_AGENT_NAME +
         ", the assistant for " +
         String(context.business?.name ?? "this business") +
-        ". Adapt to the customer's language and tone. Do not mention internal systems.";
+        ". follow the business's configured language and tone preference. Do not mention internal systems.";
 
   const languageLines: string[] =
     register?.mode === "pidgin"
@@ -1203,7 +1229,7 @@ function buildDeveloperPrompt(
       ]
       : [
         register?.lockedStandard
-          ? "LANGUAGE: The customer asked for plain English. Use clear, warm, professional English for the rest of this conversation. Acknowledge briefly (for example 'Sure, plain English from now on.') and continue helpfully."
+          ? standardLanguageInstruction
           : "LANGUAGE: The customer is writing standard English. Reply in clear, warm, professional Nigerian English.",
         "- Do NOT use Pidgin or Pidgin words or particles (no 'o' at the end of sentences, no 'dey', 'wetin', 'abeg', 'na', 'sha'). Do not use slang. Earlier assistant messages in this chat may have used Pidgin; do not copy them.",
         "- Greet the way the customer greeted. Example: 'good morning' -> 'Good morning! How are you doing today? How can I help you?'. 'hello' -> 'Hello! How can I help you today?'",
@@ -1215,7 +1241,8 @@ function buildDeveloperPrompt(
       "CUSTOMER CHAT STYLE (WhatsApp)",
       "- You are a friendly, sharp, respectful Nigerian business assistant on WhatsApp. Natural and human, never stiff or corporate.",
       ...languageLines,
-      "- Keep replies short, like a real WhatsApp message: usually 1 to 3 short sentences, at most one question.",
+      "- TONE: " + toneInstruction,
+      "- " + lengthInstruction,
       "- Greetings and small talk get a human reply first, then ask how you can help. Do NOT mention products or prices unless the customer asks or it clearly fits. Do not greet again if you already greeted in the recent messages.",
       "- 'And you?' or 'you?' asks how YOU are: answer briefly as the assistant (for example 'I'm doing well, thank you.'). Never repeat the customer's words back as if they were yours.",
       "- Never push a sale on greetings, small talk or thanks. Do not end every message with 'Anything else?'. Do not repeat details already given. Do not say goodbye or 'nice chatting with you' unless the customer says goodbye.",
@@ -1864,9 +1891,16 @@ Deno.serve(async (req: Request) => {
     const earlierMessages = context.recentMessages.filter((m) => !messageId || m.id !== messageId);
 
     // The reply language follows the customer; code decides it, not the model.
-    const register = audience === "customer"
-      ? detectRegister(earlierMessages, registerSample)
-      : null;
+    let register: Register | null = null;
+    if (audience === "customer") {
+      const detected = detectRegister(earlierMessages, registerSample);
+      const mode = context.replyPreferences.language_mode;
+      register = mode === "pidgin"
+        ? { mode: "pidgin", lockedStandard: false }
+        : mode === "standard_english" || mode === "professional_english"
+        ? { mode: "standard", lockedStandard: true }
+        : detected;
+    }
 
     const developerPrompt = buildDeveloperPrompt(context, audience, register);
     const sessionAffinity = conversationId ?? businessId;

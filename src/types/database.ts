@@ -1,4 +1,7 @@
 export type BusinessRole = 'owner' | 'admin' | 'agent' | 'viewer';
+export type AiReplyLanguageMode = 'automatic' | 'pidgin' | 'standard_english' | 'professional_english';
+export type AiReplyTone = 'friendly' | 'professional' | 'casual';
+export type AiReplyLength = 'concise' | 'balanced' | 'detailed';
 export type OrderStatus = 'pending' | 'completed' | 'cancelled';
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
@@ -15,6 +18,14 @@ export interface Business {
   currency: string | null; setup_complete: boolean | null;
 }
 export interface BusinessMembership { id: string; business_id: string; user_id: string; role: BusinessRole; created_at: string; }
+export interface BusinessAiSettings {
+  business_id: string;
+  language_mode: AiReplyLanguageMode;
+  tone: AiReplyTone;
+  response_length: AiReplyLength;
+  created_at: string;
+  updated_at: string;
+}
 export interface BusinessWithMembership extends Business { role: BusinessRole; membership_id: string; }
 export interface Product { id: string; business_id: string; name: string; description: string | null; price: number; cost_price: number; currency: string | null; stock_quantity: number; low_stock_threshold: number; sku: string | null; category: string | null; image_url: string | null; is_active: boolean; created_at: string; updated_at: string; }
 export interface InventoryMovement { id: string; business_id: string; product_id: string; quantity_change: number; quantity_before: number; quantity_after: number; reason: 'initial' | 'sale' | 'restock' | 'adjustment' | 'return' | 'damage' | 'correction'; reference_type: string | null; reference_id: string | null; note: string | null; created_by: string | null; created_at: string; }
