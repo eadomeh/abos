@@ -809,6 +809,14 @@ type EmbeddedSignupData = {
   verified_name?: string;
 };
 
+type WhatsAppHealthReport = {
+  health: 'healthy' | 'warning' | 'error';
+  phone_verified: boolean;
+  webhook_subscribed: boolean | null;
+  checked_at: string;
+  message: string;
+};
+
 function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boolean }) {
   const [connection, setConnection] = useState<{
     phone_number_id: string;
@@ -821,6 +829,8 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [checkingHealth, setCheckingHealth] = useState(false);
+  const [healthReport, setHealthReport] = useState<WhatsAppHealthReport | null>(null);
   const [showConnectFlow, setShowConnectFlow] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
@@ -854,6 +864,45 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   }, [businessId]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  const runHealthCheck = async () => {
+    setCheckingHealth(true);
+    setHealthReport(null);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+        body: { action: 'health_check', businessId },
+      });
+
+      if (invokeError || !data || !['healthy', 'warning', 'error'].includes(data.health)) {
+        setHealthReport({
+          health: 'error',
+          phone_verified: false,
+          webhook_subscribed: null,
+          checked_at: new Date().toISOString(),
+          message: 'Could not complete the WhatsApp health check. Check your session and retry.',
+        });
+        return;
+      }
+
+      setHealthReport({
+        health: data.health,
+        phone_verified: data.phone_verified === true,
+        webhook_subscribed: typeof data.webhook_subscribed === 'boolean' ? data.webhook_subscribed : null,
+        checked_at: typeof data.checked_at === 'string' ? data.checked_at : new Date().toISOString(),
+        message: typeof data.message === 'string' ? data.message : 'WhatsApp health check completed.',
+      });
+    } catch {
+      setHealthReport({
+        health: 'error',
+        phone_verified: false,
+        webhook_subscribed: null,
+        checked_at: new Date().toISOString(),
+        message: 'Could not complete the WhatsApp health check. Check your session and retry.',
+      });
+    } finally {
+      setCheckingHealth(false);
+    }
+  };
 
   // Load Facebook JavaScript SDK dynamically and initialize with app ID
   useEffect(() => {
@@ -1095,7 +1144,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
       <div className={
         'glass rounded-2xl p-5 border ' + (connection ? 'border-emerald-500/20' : 'border-amber-500/20')
       }>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className={
             'w-10 h-10 rounded-xl flex items-center justify-center ' + (connection ? 'bg-emerald-500/15' : 'bg-amber-500/15')
           }>
@@ -1122,8 +1171,56 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
             <MessageCircle className="w-3.5 h-3.5" />
             {connection ? 'Reconnect WhatsApp' : 'Connect WhatsApp'}
           </button>
+          {connection && (
+            <button
+              type="button"
+              onClick={runHealthCheck}
+              disabled={checkingHealth}
+              className="flex items-center gap-2 px-3 py-2 bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] rounded-lg text-slate-300 text-xs font-medium transition-all disabled:opacity-50"
+            >
+              {checkingHealth ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+              {checkingHealth ? 'Checking…' : 'Check connection'}
+            </button>
+          )}
         </div>
       </div>
+
+      {connection && healthReport && (
+        <section role="status" aria-live="polite" className={`glass rounded-2xl p-5 border ${
+          healthReport.health === 'healthy' ? 'border-emerald-500/20' : healthReport.health === 'warning' ? 'border-amber-500/20' : 'border-red-500/20'
+        }`}>
+          <div className="flex items-start gap-3">
+            {healthReport.health === 'healthy'
+              ? <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+              : healthReport.health === 'warning'
+                ? <CircleDot className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+                : <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold text-white">Connection health</h3>
+                <span className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-md ${
+                  healthReport.health === 'healthy' ? 'bg-emerald-500/10 text-emerald-300' : healthReport.health === 'warning' ? 'bg-amber-500/10 text-amber-300' : 'bg-red-500/10 text-red-300'
+                }`}>{healthReport.health === 'healthy' ? 'Healthy' : healthReport.health === 'warning' ? 'Needs attention' : 'Check failed'}</span>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-400 mt-1.5">{healthReport.message}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            <div className="p-3 rounded-xl bg-white/[0.025] border border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Phone access</p>
+              <p className="text-xs font-medium text-slate-200 mt-1">{healthReport.phone_verified ? 'Verified' : 'Not verified'}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-white/[0.025] border border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Webhook subscription</p>
+              <p className="text-xs font-medium text-slate-200 mt-1">{healthReport.webhook_subscribed === true ? 'Subscribed' : healthReport.webhook_subscribed === false ? 'Not subscribed' : 'Not confirmed'}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-white/[0.025] border border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Last check</p>
+              <p className="text-xs font-medium text-slate-200 mt-1">{new Date(healthReport.checked_at).toLocaleString()}</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Webhook endpoint UI - preserved from existing ABOS setup */}
       <div className="glass rounded-2xl p-6">

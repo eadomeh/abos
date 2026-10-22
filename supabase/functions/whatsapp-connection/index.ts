@@ -294,6 +294,115 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "health_check") {
+      const businessId = String(body?.businessId ?? "");
+      if (!businessId) return json({ error: "businessId is required" }, 400);
+      if (!(await assertOwner(businessId, user.id))) {
+        return json({ error: "Only the business owner can check WhatsApp health" }, 403);
+      }
+
+      const rows = await sql`
+        select phone_number_id, waba_id, encrypted_access_token, status
+        from private.whatsapp_connections
+        where business_id = ${businessId}
+        limit 1
+      `;
+      const connection = rows[0];
+      const checkedAt = new Date().toISOString();
+      if (!connection || connection.status !== "connected") {
+        return json({
+          health: "error",
+          phone_verified: false,
+          webhook_subscribed: null,
+          checked_at: checkedAt,
+          message: "No active WhatsApp connection was found. Connect WhatsApp first.",
+        });
+      }
+
+      const phoneNumberId = String(connection.phone_number_id ?? "");
+      const wabaId = String(connection.waba_id ?? "");
+      if (!/^\d+$/.test(phoneNumberId) || !/^\d+$/.test(wabaId)) {
+        return json({
+          health: "error",
+          phone_verified: false,
+          webhook_subscribed: null,
+          checked_at: checkedAt,
+          message: "The saved WhatsApp connection contains invalid account identifiers. Reconnect WhatsApp.",
+        });
+      }
+
+      const accessToken = await decryptToken(String(connection.encrypted_access_token ?? ""));
+      const phoneInfo = await metaGet(
+        `${phoneNumberId}?fields=id,display_phone_number,verified_name,quality_rating`,
+        accessToken,
+      );
+      if (!phoneInfo.response.ok || String(phoneInfo.data?.id ?? "") !== phoneNumberId) {
+        return json({
+          health: "error",
+          phone_verified: false,
+          webhook_subscribed: null,
+          checked_at: checkedAt,
+          message: "Meta could not verify access to this WhatsApp number with the stored credential. Retry or reconnect.",
+        });
+      }
+
+      const wabaPhones = await metaGet(`${wabaId}/phone_numbers?fields=id`, accessToken);
+      const phones = Array.isArray(wabaPhones.data?.data)
+        ? wabaPhones.data.data as Array<{ id?: string }>
+        : [];
+      const phoneBelongsToWaba = wabaPhones.response.ok && phones.some((phone) => String(phone?.id ?? "") === phoneNumberId);
+      if (!phoneBelongsToWaba) {
+        return json({
+          health: "error",
+          phone_verified: false,
+          webhook_subscribed: null,
+          checked_at: checkedAt,
+          message: "The saved phone number could not be verified as part of the connected WhatsApp Business Account.",
+        });
+      }
+
+      const appId = (Deno.env.get("META_APP_ID") ?? "").trim();
+      let webhookSubscribed: boolean | null = null;
+      if (appId) {
+        const subscriptions = await metaGet(`${wabaId}/subscribed_apps`, accessToken);
+        if (subscriptions.response.ok && Array.isArray(subscriptions.data?.data)) {
+          const subscribedApps = subscriptions.data.data as Array<{
+            id?: string;
+            whatsapp_business_api_data?: { id?: string };
+          }>;
+          webhookSubscribed = subscribedApps.some((app) =>
+            String(app?.whatsapp_business_api_data?.id ?? app?.id ?? "") === appId
+          );
+        }
+      }
+
+      await sql`
+        update private.whatsapp_connections
+        set last_verified_at = now(),
+            display_phone_number = coalesce(${phoneInfo.data?.display_phone_number ?? null}, display_phone_number),
+            verified_name = coalesce(${phoneInfo.data?.verified_name ?? null}, verified_name),
+            quality_rating = coalesce(${phoneInfo.data?.quality_rating ?? null}, quality_rating)
+        where business_id = ${businessId}
+      `;
+
+      const health = webhookSubscribed === true ? "healthy" : "warning";
+      const message = webhookSubscribed === true
+        ? "Meta verified the phone number, stored credential, and ABOS webhook subscription."
+        : webhookSubscribed === false
+          ? "Phone access is valid, but ABOS is not listed as subscribed to this WhatsApp Business Account's webhooks."
+          : appId
+            ? "Phone access is valid, but Meta did not return enough information to confirm the webhook subscription."
+            : "Phone access is valid, but the server-side Meta App ID is not configured for subscription verification.";
+
+      return json({
+        health,
+        phone_verified: true,
+        webhook_subscribed: webhookSubscribed,
+        checked_at: checkedAt,
+        message,
+      });
+    }
+
     if (action === "disconnect") {
       const businessId = String(body?.businessId ?? "");
       if (!businessId) return json({ error: "businessId is required" }, 400);
