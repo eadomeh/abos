@@ -42,6 +42,17 @@
     background-repeat: no-repeat, no-repeat, repeat, repeat;
   }
 
+  .abos-workspace-bg {
+    background-color: #030405;
+    background-image:
+      radial-gradient(ellipse 600px 400px at 100% 0%, rgba(110, 231, 183, 0.045), transparent 60%),
+      radial-gradient(ellipse 400px 300px at 0% 100%, rgba(16, 185, 129, 0.025), transparent 60%),
+      linear-gradient(rgba(255, 255, 255, 0.009) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.009) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+    background-repeat: no-repeat, no-repeat, repeat, repeat;
+  }
+
   .glass {
     background: rgba(255, 255, 255, 0.025);
     backdrop-filter: blur(12px);

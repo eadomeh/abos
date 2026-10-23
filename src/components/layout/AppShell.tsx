@@ -59,7 +59,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="h-[100dvh] min-h-[100dvh] abos-bg flex overflow-hidden">
+    <div className="h-[100dvh] min-h-[100dvh] abos-workspace-bg flex overflow-hidden">
       <Sidebar currentPage={page} onNavigate={handleNavigate} collapsed={sidebarCollapsed} mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar

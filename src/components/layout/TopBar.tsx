@@ -40,7 +40,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
   }, []);
 
   return (
-    <header className="h-16 abos-bg border-b border-white/[0.06] flex items-center justify-between px-4 md:px-6 flex-shrink-0">
+    <header className="h-16 abos-workspace-bg border-b border-white/[0.06] flex items-center justify-between px-4 md:px-6 flex-shrink-0">
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileMenu}

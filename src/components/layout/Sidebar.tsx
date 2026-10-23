@@ -39,7 +39,7 @@ export default function Sidebar({
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden" />
       )}
 
-      <aside className={`${mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex w-[18rem] max-w-[88vw] min-h-0' : 'hidden md:flex'} ${collapsed ? 'md:w-16' : 'md:w-60'} flex-shrink-0 abos-bg border-r border-white/[0.06] flex-col transition-all duration-300`}>
+      <aside className={`${mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex w-[18rem] max-w-[88vw] min-h-0' : 'hidden md:flex'} ${collapsed ? 'md:w-16' : 'md:w-60'} flex-shrink-0 abos-workspace-bg border-r border-white/[0.06] flex-col transition-all duration-300`}>
         <div className="h-16 flex items-center justify-between px-3 border-b border-white/[0.06]">
           <div className="flex items-center min-w-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 flex-shrink-0">
