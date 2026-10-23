@@ -104,6 +104,13 @@ function normalizeSearch(value: unknown, max = 160) {
   return text(value, max).replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Fail closed: general profile and knowledge text must not become a second bank-details store.
+function mayContainBankPaymentDetails(...values: unknown[]) {
+  const value = values.map((item) => String(item ?? "")).join("\n");
+  return /\b(?:bank|account|acct|beneficiary|routing|sort\s*code|iban|swift)\b/i.test(value)
+    || /\b\d[\d -]{8,32}\d\b/.test(value);
+}
+
 // WhatsApp renders only *bold*, _italic_ and plain text. Models often emit markdown
 // tables, headings and **double asterisks**; clean those up for customer chats.
 function toWhatsAppText(raw: string) {
@@ -314,8 +321,15 @@ async function loadContext(businessId: string, conversationId: string | null) {
 
   const recentMessages = [...(messagesRes.data ?? [])].reverse();
 
+  const businessForPrompt = {
+    ...businessRes.data,
+    description: mayContainBankPaymentDetails(businessRes.data.description)
+      ? null
+      : businessRes.data.description,
+  };
+
   return {
-    business: businessRes.data,
+    business: businessForPrompt,
     replyPreferences: {
       language_mode: replyPreferencesRes.data?.language_mode ?? "automatic",
       tone: replyPreferencesRes.data?.tone ?? "friendly",
@@ -487,7 +501,7 @@ async function runTool(
         .select("id,title,content,category,updated_at")
         .eq("business_id", ctx.businessId)
         .eq("active", true)
-        .limit(8);
+        .limit(40);
 
       if (query) {
         request = request.or(
@@ -501,7 +515,10 @@ async function runTool(
       const { data, error } = await request;
       if (error) throw error;
 
-      return { knowledge: data ?? [] };
+      const safeKnowledge = (data ?? []).filter((item) =>
+        !mayContainBankPaymentDetails(item.title, item.content)
+      ).slice(0, 8);
+      return { knowledge: safeKnowledge };
     }
 
     case "get_recent_orders": {
@@ -1375,6 +1392,7 @@ function buildDeveloperPrompt(
       ? "- When a customer asks how to pay, for bank details, or about payment methods, call get_payment_instructions and use only its exact business-scoped result. If it says unconfigured, do not guess; explain that the team must confirm the available method."
       : "- Never invent bank details or claim that a customer transfer settled. Payment verification is a separate human-authorized workflow.",
     "- Never say a manual transfer is received, paid, or verified based on a customer statement, screenshot, receipt, or model inference. Only a persisted verified status set by the authorized human review workflow confirms it.",
+    "- Never reveal bank/account details from business_knowledge or generic business descriptions; use only get_payment_instructions for customer-requested payment instructions.",
     "",
     "BUSINESS DATA",
     JSON.stringify(context.business, null, 2),

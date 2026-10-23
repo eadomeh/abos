@@ -11,4 +11,6 @@
 - Supabase migration applied: NO (requires separately reviewed remote application).
 - Supabase `abos-ai-agent` function deployed: NO.
 - Vercel preview/production deployment verified: PENDING.
+- Security review fix: account-number validation rejects whitespace-only values; payment history is retained when an order has reports; possible bank/account details are filtered from generic profile descriptions and `business_knowledge` before AI prompting.
+- Recheck `npm run typecheck`: PASS; targeted ESLint: PASS; `npm run build`: PASS; `git diff --check`: PASS.
 - Owner save/reload, role denial, customer-facing AI response, and live manual-transfer review acceptance: PENDING.

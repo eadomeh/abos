@@ -65,7 +65,7 @@ export default function BusinessPaymentsTab({ businessId, userId, canEdit }: {
 
   const previewReady = settings.bank_transfer_enabled &&
     settings.bank_name.trim().length > 0 && settings.account_name.trim().length > 0 &&
-    /^[A-Za-z0-9 -]{6,34}$/.test(settings.account_number.trim());
+    /^[A-Za-z0-9][A-Za-z0-9 -]{4,32}[A-Za-z0-9]$/.test(settings.account_number.trim());
 
   const preview = previewReady ? [
     'Bank transfer',
@@ -94,7 +94,7 @@ export default function BusinessPaymentsTab({ businessId, userId, canEdit }: {
         setError('Bank name and account name are required when bank transfer is enabled.');
         return;
       }
-      if (!/^[A-Za-z0-9 -]{6,34}$/.test(accountNumber)) {
+      if (!/^[A-Za-z0-9][A-Za-z0-9 -]{4,32}[A-Za-z0-9]$/.test(accountNumber)) {
         setError('Enter an account number with 6–34 letters, numbers, spaces, or hyphens.');
         return;
       }

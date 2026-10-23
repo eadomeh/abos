@@ -15,7 +15,7 @@ CREATE TABLE public.business_payment_settings (
     NOT bank_transfer_enabled OR (
       char_length(btrim(coalesce(bank_name, ''))) > 0 AND
       char_length(btrim(coalesce(account_name, ''))) > 0 AND
-      account_number IS NOT NULL AND account_number ~ '^[A-Za-z0-9 -]{6,34}$'
+      account_number IS NOT NULL AND btrim(account_number) ~ '^[A-Za-z0-9][A-Za-z0-9 -]{4,32}[A-Za-z0-9]$'
     )
   )
 );
@@ -37,7 +37,7 @@ CREATE POLICY business_payment_settings_owner_update
 CREATE TABLE public.order_payment_reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
-  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE RESTRICT,
   method text NOT NULL DEFAULT 'manual_bank_transfer'
     CHECK (method = 'manual_bank_transfer'),
   amount numeric(12,2) NOT NULL CHECK (amount > 0),

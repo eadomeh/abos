@@ -12,7 +12,7 @@ Allow the business owner to configure safe, business-scoped bank-transfer instru
 ## Scope
 - Dedicated owner-only Settings section for bank name, beneficiary/account name, account number, transfer enablement and extra customer instructions.
 - Live preview includes an explicit pending-until-human-verification warning.
-- RLS isolates bank details to the business owner. Customer AI receives account details only through a business-scoped payment-instructions tool, and only when requested.
+- RLS isolates bank details to the business owner. Customer AI receives account details only through a business-scoped payment-instructions tool, and only when requested. Suspect bank/account details are filtered from generic business descriptions and `business_knowledge` before entering the AI prompt.
 - Add payment reports linked to orders. Staff can record a claim as `pending`; owner/admin can review to `verified` or `rejected` through guarded database functions. Review actor/time and activity events are recorded.
 - Never expose bank details through `business_knowledge`; never accept receipt screenshots or customer claims as settlement proof; never auto-complete the order after a payment review.
 
@@ -27,7 +27,7 @@ Allow the business owner to configure safe, business-scoped bank-transfer instru
 - Typecheck, targeted ESLint, production build and `git diff --check` pass before feature-branch commit.
 
 ## Migration
-`20261022222500_business_payment_settings_and_manual_transfers.sql`; exact SQL in this file is the intended database migration. It is not applied by this runner.
+`20261022222500_business_payment_settings_and_manual_transfers.sql`; exact SQL in this file is the intended database migration. It is not applied by this runner. Transfer reports restrict order deletion while a report exists, preserving review/audit history.
 
 ## Rollback
 Revert the feature branch before deployment. If the additive migration has been applied later, leave existing rows intact and use a separately reviewed rollback plan rather than silently dropping payment records.
