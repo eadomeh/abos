@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  AlertTriangle, Bot, BookOpen, Building2, MessageCircle, Users,
+  AlertTriangle, Bot, BookOpen, Building2, Landmark, MessageCircle, Users,
 } from 'lucide-react';
 
 type SettingsSectionItem = {
@@ -10,7 +10,7 @@ type SettingsSectionItem = {
   icon: LucideIcon;
 };
 
-export type SettingsSectionId = 'business' | 'ai' | 'knowledge' | 'whatsapp' | 'team' | 'danger';
+export type SettingsSectionId = 'business' | 'payments' | 'ai' | 'knowledge' | 'whatsapp' | 'team' | 'danger';
 
 type SettingsSectionNavProps = {
   activeSection: SettingsSectionId;
@@ -22,6 +22,7 @@ type SettingsSectionNavProps = {
 const sectionGroups: { label: string; items: SettingsSectionItem[] }[] = [
   { label: 'WORKSPACE', items: [
     { id: 'business', label: 'Business profile', description: 'Identity and contact details', icon: Building2 },
+    { id: 'payments', label: 'Payments & bank details', description: 'Bank transfer instructions', icon: Landmark },
   ] },
   { label: 'AI EXPERIENCE', items: [
     { id: 'ai', label: 'AI agent', description: 'Language, tone and replies', icon: Bot },
@@ -50,6 +51,7 @@ export default function SettingsSectionNav({ activeSection, onSelect, businessNa
           <p className="px-3 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">{group.label}</p>
           <div className="space-y-1">
             {group.items.map((item) => {
+              if (item.id === 'payments' && role !== 'owner') return null;
               const Icon = item.icon;
               const selected = activeSection === item.id;
               const danger = item.id === 'danger';

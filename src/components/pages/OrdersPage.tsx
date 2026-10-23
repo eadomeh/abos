@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
-import type { Order, Product, Customer, OrderItem, OrderStatus } from '@/types/database';
+import type { Order, Product, Customer, OrderItem, OrderStatus, OrderPaymentReport } from '@/types/database';
 import {
   ShoppingCart, Plus, X, Loader2, AlertCircle, ArrowRight,
   Check, Clock, XCircle, Package, Trash2, Minus, Receipt,
@@ -14,6 +14,8 @@ export default function OrdersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [paymentReports, setPaymentReports] = useState<OrderPaymentReport[]>([]);
+  const [recordingOrder, setRecordingOrder] = useState<Order | null>(null);
 
   const fetchOrders = useCallback(async () => {
     if (!activeBusiness) { setOrders([]); setLoading(false); return; }
@@ -32,6 +34,18 @@ export default function OrdersPage() {
     } else {
       setOrders(data as unknown as Order[]);
     }
+
+    const { data: reports, error: reportsError } = await supabase
+      .from('order_payment_reports')
+      .select('*')
+      .eq('business_id', activeBusiness.id)
+      .order('created_at', { ascending: false });
+    if (reportsError) {
+      setPaymentReports([]);
+      setActionError('Payment reports could not be loaded. Retry or reload this page.');
+    } else {
+      setPaymentReports((reports ?? []) as unknown as OrderPaymentReport[]);
+    }
     setLoading(false);
   }, [activeBusiness]);
 
@@ -42,6 +56,23 @@ export default function OrdersPage() {
   const formatPrice = (amount: number) => {
     const cur = activeBusiness?.currency ?? 'NGN';
     return `${cur} ${Number(amount).toLocaleString()}`;
+  };
+
+  const canRecordTransfers = ['owner', 'admin', 'agent'].includes(activeBusiness?.role ?? '');
+  const canReviewTransfers = ['owner', 'admin'].includes(activeBusiness?.role ?? '');
+
+  const reviewManualTransfer = async (paymentId: string, decision: 'verified' | 'rejected') => {
+    if (!canReviewTransfers) { setActionError('Only the business owner or admin can review a transfer.'); return; }
+    const confirmation = decision === 'verified'
+      ? 'Confirm that you independently checked the bank account and verified that the funds were received. This does not complete the order.'
+      : 'Reject this transfer claim? The claim will remain in the audit history.';
+    if (!window.confirm(confirmation)) return;
+    setActionError(null);
+    const { error } = await supabase.rpc('review_manual_bank_transfer', {
+      p_payment_id: paymentId, p_decision: decision, p_review_note: null,
+    });
+    if (error) { setActionError(error.message || 'Transfer review failed.'); return; }
+    await fetchOrders();
   };
 
   const statusConfig: Record<OrderStatus, { icon: typeof Check; color: string; label: string }> = {
@@ -135,6 +166,10 @@ export default function OrdersPage() {
         <div className="space-y-3">
           {filtered.map((order) => {
             const StatusIcon = statusConfig[order.status].icon;
+            const orderPayments = paymentReports.filter((payment) => payment.order_id === order.id);
+            const verifiedPayment = orderPayments.find((payment) => payment.status === 'verified');
+            const pendingPayment = orderPayments.find((payment) => payment.status === 'pending');
+            const latestPayment = orderPayments[0];
             return (
               <div key={order.id} className="glass rounded-2xl p-5 transition-all">
                 <div className="flex items-start justify-between mb-3">
@@ -165,6 +200,27 @@ export default function OrdersPage() {
                     ))}
                   </div>
                 )}
+
+                <div className="mt-4 ml-12 border-t border-white/[0.06] pt-3 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">Payment status</p>
+                  {verifiedPayment ? (
+                    <p className="text-xs text-emerald-300">Verified by an authorized reviewer on {new Date(verifiedPayment.reviewed_at ?? verifiedPayment.updated_at).toLocaleString()}. Order fulfilment status is unchanged.</p>
+                  ) : pendingPayment ? (
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                      <p className="text-xs font-medium text-amber-200">Transfer claim pending human verification</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Amount: {formatPrice(pendingPayment.amount)}{pendingPayment.transfer_reference ? ` · Reference: ${pendingPayment.transfer_reference}` : ''}</p>
+                      {pendingPayment.report_note && <p className="text-[11px] text-slate-400 mt-1">Note: {pendingPayment.report_note}</p>}
+                      {canReviewTransfers && <div className="flex flex-wrap gap-2 mt-3"><button type="button" onClick={() => void reviewManualTransfer(pendingPayment.id, 'verified')} className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/20">Confirm funds received</button><button type="button" onClick={() => void reviewManualTransfer(pendingPayment.id, 'rejected')} className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-300 text-xs font-semibold hover:bg-red-500/20">Reject claim</button></div>}
+                    </div>
+                  ) : latestPayment?.status === 'rejected' ? (
+                    <p className="text-xs text-red-300">Last transfer claim was rejected. A new claim may be recorded if appropriate.</p>
+                  ) : (
+                    <p className="text-xs text-slate-500">No transfer claim recorded.</p>
+                  )}
+                  {canRecordTransfers && order.status === 'pending' && !pendingPayment && !verifiedPayment && (
+                    <button type="button" onClick={() => setRecordingOrder(order)} className="px-3 py-1.5 rounded-lg border border-white/[0.09] text-slate-300 text-xs font-medium hover:bg-white/[0.04]">Record transfer claim</button>
+                  )}
+                </div>
 
                 {/* Status actions */}
                 <div className="flex gap-2 pl-12">
@@ -198,6 +254,14 @@ export default function OrdersPage() {
           currency={activeBusiness.currency ?? 'NGN'}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); fetchOrders(); }}
+        />
+      )}
+      {recordingOrder && activeBusiness && (
+        <RecordTransferClaimModal
+          order={recordingOrder}
+          currency={activeBusiness.currency ?? 'NGN'}
+          onClose={() => setRecordingOrder(null)}
+          onCreated={() => { setRecordingOrder(null); void fetchOrders(); }}
         />
       )}
     </div>
@@ -507,6 +571,57 @@ function CreateOrderModal({ businessId, currency, onClose, onCreated }: {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function RecordTransferClaimModal({ order, currency, onClose, onCreated }: {
+  order: Order;
+  currency: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [reference, setReference] = useState('');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (reference.trim().length > 120 || note.trim().length > 500) {
+      setError('Reference must be 120 characters or fewer; note must be 500 characters or fewer.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const { error: rpcError } = await supabase.rpc('record_manual_bank_transfer', {
+        p_order_id: order.id,
+        p_transfer_reference: reference.trim() || null,
+        p_report_note: note.trim() || null,
+      });
+      if (rpcError) throw rpcError;
+      onCreated();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not record the transfer claim.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="transfer-claim-title" className="w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-white/[0.09] bg-slate-950 p-5 sm:p-6 shadow-2xl">
+        <h2 id="transfer-claim-title" className="text-lg font-semibold text-white">Record bank-transfer claim</h2>
+        <p className="text-sm text-slate-400 mt-1">Order: {order.order_number ?? order.id.slice(0, 8)} · {currency} {Number(order.total_amount).toLocaleString()}</p>
+        <p className="text-xs leading-relaxed text-amber-200 mt-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">This creates a pending claim only. Do not use a customer message or receipt screenshot alone as proof that the bank received the funds.</p>
+        <form onSubmit={submit} className="space-y-4 mt-4">
+          <div><label className="block text-xs font-medium text-slate-300 mb-1.5" htmlFor="transfer-reference">Transfer reference (optional)</label><input id="transfer-reference" className="w-full rounded-xl border border-white/[0.09] bg-slate-900 px-3 py-2.5 text-sm text-white" maxLength={120} autoComplete="off" value={reference} onChange={(e) => setReference(e.target.value)} /></div>
+          <div><label className="block text-xs font-medium text-slate-300 mb-1.5" htmlFor="transfer-note">Internal note (optional)</label><textarea id="transfer-note" className="w-full min-h-20 rounded-xl border border-white/[0.09] bg-slate-900 px-3 py-2.5 text-sm text-white" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+          {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="px-4 py-2.5 rounded-xl border border-white/[0.09] text-sm text-slate-300 disabled:opacity-50">Cancel</button><button type="submit" disabled={saving} className="px-4 py-2.5 rounded-xl bg-emerald-500 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save as pending'}</button></div>
+        </form>
+      </section>
     </div>
   );
 }

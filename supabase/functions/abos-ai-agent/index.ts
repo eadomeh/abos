@@ -453,6 +453,31 @@ async function runTool(
       return { leads: data ?? [] };
     }
 
+    case "get_payment_instructions": {
+      const { data, error } = await supabase
+        .from("business_payment_settings")
+        .select("bank_transfer_enabled,bank_name,account_name,account_number,customer_instructions")
+        .eq("business_id", ctx.businessId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data || data.bank_transfer_enabled !== true || !data.bank_name || !data.account_name || !data.account_number) {
+        return {
+          configured: false,
+          message: "Manual bank transfer is not enabled or has incomplete business settings. Do not provide account details. Tell the customer the team needs to confirm the available payment method.",
+        };
+      }
+      return {
+        configured: true,
+        method: "manual_bank_transfer",
+        bank_name: data.bank_name,
+        account_name: data.account_name,
+        account_number: data.account_number,
+        customer_instructions: data.customer_instructions ?? "",
+        transfer_reference_rule: "Ask the customer to use their exact order number as the transfer reference.",
+        verification_rule: "A transfer claim is not settlement. Never tell the customer the payment is received or verified. The business owner/admin must independently verify the funds first.",
+      };
+    }
+
     case "search_business_knowledge": {
       const query = normalizeSearch(args.query, 180);
       const category = normalizeSearch(args.category, 80);
@@ -995,6 +1020,19 @@ const tools = [
   },
   {
     type: "function",
+    name: "get_payment_instructions",
+    description:
+      "Retrieve the current business-specific bank-transfer instructions ONLY when the customer asks how to pay, asks for the bank account, or asks which payment methods are available. Never invent or infer bank details. A returned transfer instruction does not confirm settlement.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    type: "function",
     name: "search_business_knowledge",
     description:
       "Search stored business policies, FAQs, delivery information, payment instructions, location, hours, and other operational knowledge. Use it instead of inventing business-specific facts.",
@@ -1331,6 +1369,12 @@ function buildDeveloperPrompt(
     "",
     "TURN ANALYSIS",
     "For every turn, infer language + language_confidence, intent + intent_confidence, urgency, sales_stage, customer_signals, concrete entities, pending_actions, next_best_action, and a compact conversation summary.",
+    "",
+    "PAYMENT SAFETY",
+    audience === "customer"
+      ? "- When a customer asks how to pay, for bank details, or about payment methods, call get_payment_instructions and use only its exact business-scoped result. If it says unconfigured, do not guess; explain that the team must confirm the available method."
+      : "- Never invent bank details or claim that a customer transfer settled. Payment verification is a separate human-authorized workflow.",
+    "- Never say a manual transfer is received, paid, or verified based on a customer statement, screenshot, receipt, or model inference. Only a persisted verified status set by the authorized human review workflow confirms it.",
     "",
     "BUSINESS DATA",
     JSON.stringify(context.business, null, 2),
