@@ -6,6 +6,7 @@ import ImageCropEditor from '@/components/ImageCropEditor';
 import { cropImageFile } from '@/lib/imageCrop';
 import SettingsSectionNav, { type SettingsSectionId } from '@/components/settings/SettingsSectionNav';
 import BusinessKnowledgeTab from '@/components/settings/BusinessKnowledgeTab';
+import BusinessPaymentsTab from '@/components/settings/BusinessPaymentsTab';
 import type { AiReplyLanguageMode, AiReplyTone, AiReplyLength, BusinessMembership, BusinessRole } from '@/types/database';
 import {
   ArrowLeft, Building2, Users, AlertTriangle, Loader2, Settings2,
@@ -48,6 +49,7 @@ export default function SettingsPage() {
   const isOwner = activeBusiness.role === 'owner';
   const sectionTitles: Record<SettingsSectionId, string> = {
     business: 'Business profile',
+    payments: 'Payments & bank details',
     ai: 'AI agent',
     knowledge: 'Business knowledge',
     whatsapp: 'WhatsApp',
@@ -56,6 +58,7 @@ export default function SettingsPage() {
   };
   const sectionDescriptions: Record<SettingsSectionId, string> = {
     business: 'Manage your business identity and contact details.',
+    payments: 'Configure approved bank-transfer details and customer payment instructions.',
     ai: 'Control the language, tone and style of customer-facing replies.',
     knowledge: 'Maintain verified business facts, answers and policies for your AI agent.',
     whatsapp: 'Manage your WhatsApp Business connection and messaging setup.',
@@ -108,6 +111,7 @@ export default function SettingsPage() {
             </div>
           </div>
           {tab === 'business' && <BusinessTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner} />}
+          {tab === 'payments' && isOwner && <BusinessPaymentsTab key={activeBusiness.id} businessId={activeBusiness.id} userId={user?.id ?? ''} canEdit={isOwner} />}
           {tab === 'ai' && <AiAgentSettingsTab key={activeBusiness.id} businessId={activeBusiness.id} canEdit={isOwner || activeBusiness.role === 'admin'} />}
           {tab === 'knowledge' && <BusinessKnowledgeTab key={activeBusiness.id} businessId={activeBusiness.id} userId={user?.id ?? ''} canEdit={isOwner || activeBusiness.role === 'admin'} />}
           {tab === 'whatsapp' && <WhatsAppTab businessId={activeBusiness.id} canEdit={isOwner} />}

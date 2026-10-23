@@ -104,6 +104,13 @@ function normalizeSearch(value: unknown, max = 160) {
   return text(value, max).replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Fail closed: general profile and knowledge text must not become a second bank-details store.
+function mayContainBankPaymentDetails(...values: unknown[]) {
+  const value = values.map((item) => String(item ?? "")).join("\n");
+  return /\b(?:bank|account|acct|beneficiary|routing|sort\s*code|iban|swift)\b/i.test(value)
+    || /\b\d[\d -]{8,32}\d\b/.test(value);
+}
+
 // WhatsApp renders only *bold*, _italic_ and plain text. Models often emit markdown
 // tables, headings and **double asterisks**; clean those up for customer chats.
 function toWhatsAppText(raw: string) {
@@ -314,8 +321,15 @@ async function loadContext(businessId: string, conversationId: string | null) {
 
   const recentMessages = [...(messagesRes.data ?? [])].reverse();
 
+  const businessForPrompt = {
+    ...businessRes.data,
+    description: mayContainBankPaymentDetails(businessRes.data.description)
+      ? null
+      : businessRes.data.description,
+  };
+
   return {
-    business: businessRes.data,
+    business: businessForPrompt,
     replyPreferences: {
       language_mode: replyPreferencesRes.data?.language_mode ?? "automatic",
       tone: replyPreferencesRes.data?.tone ?? "friendly",
@@ -453,6 +467,31 @@ async function runTool(
       return { leads: data ?? [] };
     }
 
+    case "get_payment_instructions": {
+      const { data, error } = await supabase
+        .from("business_payment_settings")
+        .select("bank_transfer_enabled,bank_name,account_name,account_number,customer_instructions")
+        .eq("business_id", ctx.businessId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data || data.bank_transfer_enabled !== true || !data.bank_name || !data.account_name || !data.account_number) {
+        return {
+          configured: false,
+          message: "Manual bank transfer is not enabled or has incomplete business settings. Do not provide account details. Tell the customer the team needs to confirm the available payment method.",
+        };
+      }
+      return {
+        configured: true,
+        method: "manual_bank_transfer",
+        bank_name: data.bank_name,
+        account_name: data.account_name,
+        account_number: data.account_number,
+        customer_instructions: data.customer_instructions ?? "",
+        transfer_reference_rule: "Ask the customer to use their exact order number as the transfer reference.",
+        verification_rule: "A transfer claim is not settlement. Never tell the customer the payment is received or verified. The business owner/admin must independently verify the funds first.",
+      };
+    }
+
     case "search_business_knowledge": {
       const query = normalizeSearch(args.query, 180);
       const category = normalizeSearch(args.category, 80);
@@ -462,7 +501,7 @@ async function runTool(
         .select("id,title,content,category,updated_at")
         .eq("business_id", ctx.businessId)
         .eq("active", true)
-        .limit(8);
+        .limit(40);
 
       if (query) {
         request = request.or(
@@ -476,7 +515,10 @@ async function runTool(
       const { data, error } = await request;
       if (error) throw error;
 
-      return { knowledge: data ?? [] };
+      const safeKnowledge = (data ?? []).filter((item) =>
+        !mayContainBankPaymentDetails(item.title, item.content)
+      ).slice(0, 8);
+      return { knowledge: safeKnowledge };
     }
 
     case "get_recent_orders": {
@@ -995,6 +1037,19 @@ const tools = [
   },
   {
     type: "function",
+    name: "get_payment_instructions",
+    description:
+      "Retrieve the current business-specific bank-transfer instructions ONLY when the customer asks how to pay, asks for the bank account, or asks which payment methods are available. Never invent or infer bank details. A returned transfer instruction does not confirm settlement.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    type: "function",
     name: "search_business_knowledge",
     description:
       "Search stored business policies, FAQs, delivery information, payment instructions, location, hours, and other operational knowledge. Use it instead of inventing business-specific facts.",
@@ -1331,6 +1386,13 @@ function buildDeveloperPrompt(
     "",
     "TURN ANALYSIS",
     "For every turn, infer language + language_confidence, intent + intent_confidence, urgency, sales_stage, customer_signals, concrete entities, pending_actions, next_best_action, and a compact conversation summary.",
+    "",
+    "PAYMENT SAFETY",
+    audience === "customer"
+      ? "- When a customer asks how to pay, for bank details, or about payment methods, call get_payment_instructions and use only its exact business-scoped result. If it says unconfigured, do not guess; explain that the team must confirm the available method."
+      : "- Never invent bank details or claim that a customer transfer settled. Payment verification is a separate human-authorized workflow.",
+    "- Never say a manual transfer is received, paid, or verified based on a customer statement, screenshot, receipt, or model inference. Only a persisted verified status set by the authorized human review workflow confirms it.",
+    "- Never reveal bank/account details from business_knowledge or generic business descriptions; use only get_payment_instructions for customer-requested payment instructions.",
     "",
     "BUSINESS DATA",
     JSON.stringify(context.business, null, 2),
