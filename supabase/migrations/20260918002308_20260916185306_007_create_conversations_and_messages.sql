@@ -1,47 +1,3 @@
-/*
-# Day 4: Conversations and Messages
-
-1. New Tables
-- `conversations` — represents a chat thread between a business and a customer
-  - id (uuid, primary key)
-  - business_id (uuid, FK to businesses, cascade delete)
-  - customer_id (uuid, FK to customers, nullable, set null on delete)
-  - customer_name (text, not null — denormalized for quick display)
-  - customer_phone (text, nullable)
-  - last_message_preview (text, nullable — updated on new message)
-  - last_message_at (timestamptz, nullable — used for sorting)
-  - unread_count (integer, default 0 — incoming messages not yet read)
-  - created_at (timestamptz)
-  - updated_at (timestamptz)
-
-- `messages` — individual messages within a conversation
-  - id (uuid, primary key)
-  - conversation_id (uuid, FK to conversations, cascade delete)
-  - business_id (uuid, FK to businesses, cascade delete — for direct RLS checks)
-  - direction (text, 'incoming' or 'outgoing')
-  - content (text, not null)
-  - created_at (timestamptz)
-
-2. Security
-- Enable RLS on both tables.
-- Conversations: business members can SELECT/INSERT/UPDATE; only owners can DELETE.
-- Messages: business members can SELECT/INSERT; updates and deletes restricted to owners.
-- Uses existing is_business_member() and is_business_owner() helper functions.
-
-3. Indexes
-- conversations: business_id, last_message_at DESC
-- messages: conversation_id, created_at, business_id
-
-4. Helper Function
-- is_conversation_business_member(check_conversation_id uuid) — checks membership
-  through the conversation's business_id for message-level RLS.
-
-5. Notes
-- Real-time subscriptions will use these tables via Supabase realtime.
-- WhatsApp webhook integration (Day 5) will insert incoming messages here.
-- For now, users can start conversations manually and send messages in-app.
-*/
-
 CREATE TABLE IF NOT EXISTS conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
@@ -56,7 +12,6 @@ CREATE TABLE IF NOT EXISTS conversations (
 );
 
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-
 CREATE INDEX IF NOT EXISTS idx_conversations_business_id ON conversations(business_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at ON conversations(last_message_at DESC);
 
@@ -84,7 +39,6 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_business_id ON messages(business_id);
@@ -119,7 +73,6 @@ DROP POLICY IF EXISTS "delete_messages" ON messages;
 CREATE POLICY "delete_messages" ON messages FOR DELETE
   TO authenticated USING (is_business_owner(business_id));
 
--- Trigger for updated_at on conversations
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_conversations_updated_at') THEN
     CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations

@@ -1,0 +1,36 @@
+{
+  "whatsapp-send": {
+    "version": 8,
+    "verify_jwt": true,
+    "path": "supabase/functions/whatsapp-send/index.ts",
+    "chars": 11836,
+    "md5": "e6d38c312cb464e5f70a178884d424a5",
+    "fnv64_utf16": "5eddff441bad6202",
+    "content_matches_live": true
+  },
+  "abos-ai-agent": {
+    "version": 31,
+    "verify_jwt": false,
+    "path": "supabase/functions/abos-ai-agent/index.ts",
+    "chars": 78649,
+    "md5": "54b17054be635a11a42589b5dd8fa79b",
+    "deno_json": "{}",
+    "fnv64_utf16": "2bd996c5d1f43e03",
+    "content_matches_live": true
+  },
+  "whatsapp-webhook": {
+    "version": 11,
+    "verify_jwt": false,
+    "status": "confirmed exact source parity with main; no file replacement"
+  },
+  "business-team-invite": {
+    "version": 1,
+    "verify_jwt": true,
+    "status": "confirmed source parity with main; config entry added"
+  },
+  "abos-ai-eval": {
+    "version": 9,
+    "verify_jwt": false,
+    "status": "main differs only by whitespace after seed insert; not behaviorally different"
+  }
+}

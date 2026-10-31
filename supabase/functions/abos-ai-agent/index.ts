@@ -34,6 +34,18 @@ const MAX_OUTPUT_TOKENS = Math.min(
 // Total time one request may spend trying to get an answer before giving up.
 const ANSWER_BUDGET_MS = 45000;
 
+// abos-ai-agent v31: only owner / admin / agent may run the agent (it has write tools).
+// Viewers are read-only and get a 403.
+const AGENT_ROLES = new Set(["owner", "admin", "agent"]);
+
+class ForbiddenError extends Error {
+  code: string;
+  constructor(message: string, code = "FORBIDDEN") {
+    super(message);
+    this.code = code;
+  }
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 let runtimeChainCache: { at: number; chain: string[] } | null = null;
@@ -228,13 +240,16 @@ async function requireBusinessAccess(
 
   const { data, error } = await supabase
     .from("business_memberships")
-    .select("id")
+    .select("role")
     .eq("business_id", businessId)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
-  if (!data) throw new Error("You do not have access to this business");
+  if (!data) throw new ForbiddenError("You do not have access to this business", "NOT_A_MEMBER");
+  if (!AGENT_ROLES.has(String(data.role))) {
+    throw new ForbiddenError("Your role cannot use the AI agent", "ROLE_FORBIDDEN");
+  }
 }
 
 async function loadContext(businessId: string, conversationId: string | null) {
@@ -1814,7 +1829,7 @@ Deno.serve(async (req: Request) => {
       {
         ok: true,
         service: "abos-ai-agent",
-        version: "2.6",
+        version: "2.7",
         provider: "cloudflare",
         model_chain: await getModelChain(),
         max_output_tokens: MAX_OUTPUT_TOKENS,
@@ -2252,7 +2267,7 @@ Deno.serve(async (req: Request) => {
     return json(
       {
         ok: true,
-        version: "2.6",
+        version: "2.7",
         answer,
         model: usedModel,
         response_id: response.id ?? null,
@@ -2269,6 +2284,11 @@ Deno.serve(async (req: Request) => {
       origin,
     );
   } catch (error) {
+    // Role / membership failures are a clean 403, never a holding reply or a 500.
+    if (error instanceof ForbiddenError) {
+      return json({ error: error.message, code: error.code }, 403, origin);
+    }
+
     const message =
       error instanceof Error
         ? error.message
@@ -2296,7 +2316,7 @@ Deno.serve(async (req: Request) => {
       return json(
         {
           ok: true,
-          version: "2.6",
+          version: "2.7",
           fallback: true,
           answer: HOLDING_REPLY,
           model: usedModel,
@@ -2313,7 +2333,7 @@ Deno.serve(async (req: Request) => {
       {
         error: "ABOS AI Agent failed",
         detail: message,
-        version: "2.6",
+        version: "2.7",
       },
       500,
       origin,

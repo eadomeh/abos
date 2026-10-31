@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.complete_order(p_order_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -169,8 +170,7 @@ BEGIN
 
   IF current_setting('abos.internal_order_transition', true) = '1' THEN
     IF NOT (
-      OLD.status = 'pending'
-      AND NEW.status IN ('completed', 'cancelled')
+      (OLD.status = 'pending' AND NEW.status IN ('completed', 'cancelled'))
     ) THEN
       RAISE EXCEPTION 'Invalid order status transition';
     END IF;

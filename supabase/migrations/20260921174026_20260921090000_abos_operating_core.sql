@@ -1,3 +1,4 @@
+
 create table if not exists public.leads (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,

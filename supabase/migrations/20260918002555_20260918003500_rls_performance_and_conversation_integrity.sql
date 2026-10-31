@@ -1,18 +1,28 @@
 CREATE INDEX IF NOT EXISTS idx_conversations_customer_id ON conversations(customer_id);
 
 CREATE OR REPLACE FUNCTION private.is_business_member(check_business_id uuid)
-RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM business_memberships
+    SELECT 1
+    FROM business_memberships
     WHERE business_memberships.business_id = check_business_id
       AND business_memberships.user_id = (SELECT auth.uid())
   );
 $$;
 
 CREATE OR REPLACE FUNCTION private.is_business_owner(check_business_id uuid)
-RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM businesses
+    SELECT 1
+    FROM businesses
     WHERE businesses.id = check_business_id
       AND businesses.owner_id = (SELECT auth.uid())
   );

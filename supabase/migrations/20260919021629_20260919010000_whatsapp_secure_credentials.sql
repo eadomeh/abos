@@ -42,3 +42,6 @@ CREATE TRIGGER trigger_touch_whatsapp_connection
 BEFORE UPDATE ON private.whatsapp_connections
 FOR EACH ROW
 EXECUTE FUNCTION private.touch_whatsapp_connection();
+
+-- The legacy client-visible credential field is no longer used.
+-- Keep the column for backward-compatible migrations; new code must never read it.

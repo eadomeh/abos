@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.record_initial_product_stock()
 RETURNS trigger
 LANGUAGE plpgsql

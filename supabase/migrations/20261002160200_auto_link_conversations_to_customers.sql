@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.normalize_phone_digits(p_phone text)
 RETURNS text
 LANGUAGE sql
