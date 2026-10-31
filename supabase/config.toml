@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.whatsapp-connect-once]
 verify_jwt = false
+
+[functions.business-team-invite]
+verify_jwt = true

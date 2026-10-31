@@ -1,0 +1,328 @@
+{
+  "task": "A-0 production-to-repository source parity",
+  "repository": "eadomeh/abos",
+  "base_commit": "f574b35352cfdc42b98d23010cff9426d4d35b36",
+  "production_branch": "main",
+  "supabase_project_ref": "iqbhzoanssmskohhmpgj",
+  "source": "supabase_migrations.schema_migrations statements[1]",
+  "migration_count": 45,
+  "sql_char_count": 118682,
+  "migrations": [
+    {
+      "version": "20260918002237",
+      "name": "20260911140018_001_create_businesses_and_memberships",
+      "file": "20260918002237_20260911140018_001_create_businesses_and_memberships.sql",
+      "sql_chars": 3870,
+      "sql_md5": "eddc16693b49dd929e0f7e5347854164"
+    },
+    {
+      "version": "20260918002244",
+      "name": "20260911142040_002_fix_rls_recursion",
+      "file": "20260918002244_20260911142040_002_fix_rls_recursion.sql",
+      "sql_chars": 1993,
+      "sql_md5": "cec7145118b7f90d9699394eb4f79a87"
+    },
+    {
+      "version": "20260918002247",
+      "name": "20260911142057_003_harden_functions",
+      "file": "20260918002247_20260911142057_003_harden_functions.sql",
+      "sql_chars": 449,
+      "sql_md5": "9eebfd1518006355054c46be283482cc"
+    },
+    {
+      "version": "20260918002251",
+      "name": "20260912143639_004_fix_permissions_and_expand_business",
+      "file": "20260918002251_20260912143639_004_fix_permissions_and_expand_business.sql",
+      "sql_chars": 1839,
+      "sql_md5": "430068fd21813f4539ba68fc45c2332f"
+    },
+    {
+      "version": "20260918002300",
+      "name": "20260913223911_005b_create_products_customers_orders",
+      "file": "20260918002300_20260913223911_005b_create_products_customers_orders.sql",
+      "sql_chars": 6689,
+      "sql_md5": "7c65e9f1315382f2259ba1b0821ecd72"
+    },
+    {
+      "version": "20260918002303",
+      "name": "20260915182314_006_add_get_user_by_email_function",
+      "file": "20260918002303_20260915182314_006_add_get_user_by_email_function.sql",
+      "sql_chars": 334,
+      "sql_md5": "abca72e43fbb29d916f5fe82fdee543a"
+    },
+    {
+      "version": "20260918002308",
+      "name": "20260916185306_007_create_conversations_and_messages",
+      "file": "20260918002308_20260916185306_007_create_conversations_and_messages.sql",
+      "sql_chars": 3695,
+      "sql_md5": "899d15266f41bfa6a677e31da79c7e40"
+    },
+    {
+      "version": "20260918002315",
+      "name": "20260917101939_008_whatsapp_integration_schema",
+      "file": "20260918002315_20260917101939_008_whatsapp_integration_schema.sql",
+      "sql_chars": 1895,
+      "sql_md5": "83cc2a8d66011c1774fd9179bfad89fd"
+    },
+    {
+      "version": "20260918002318",
+      "name": "20260918000000_009_security_baseline",
+      "file": "20260918002318_20260918000000_009_security_baseline.sql",
+      "sql_chars": 821,
+      "sql_md5": "076e1d39d1899c241e8f7a82dc03c77b"
+    },
+    {
+      "version": "20260918002329",
+      "name": "20260918003000_move_security_helpers_private",
+      "file": "20260918002329_20260918003000_move_security_helpers_private.sql",
+      "sql_chars": 1305,
+      "sql_md5": "2b00f50c74aa40c60c8fb8837343e886"
+    },
+    {
+      "version": "20260918002555",
+      "name": "20260918003500_rls_performance_and_conversation_integrity",
+      "file": "20260918002555_20260918003500_rls_performance_and_conversation_integrity.sql",
+      "sql_chars": 2001,
+      "sql_md5": "5944f2bbb2fd17f4d0aa9e2e35192b6d"
+    },
+    {
+      "version": "20260918002601",
+      "name": "20260918004000_channel_foundation",
+      "file": "20260918002601_20260918004000_channel_foundation.sql",
+      "sql_chars": 1004,
+      "sql_md5": "b9d47fc6f0e61cde068cf5fcb374a8fc"
+    },
+    {
+      "version": "20260918003332",
+      "name": "20260918004500_enable_realtime_for_conversations",
+      "file": "20260918003332_20260918004500_enable_realtime_for_conversations.sql",
+      "sql_chars": 644,
+      "sql_md5": "277093c7f1ececb57da9a6048f641c79"
+    },
+    {
+      "version": "20260919021629",
+      "name": "20260919010000_whatsapp_secure_credentials",
+      "file": "20260919021629_20260919010000_whatsapp_secure_credentials.sql",
+      "sql_chars": 1669,
+      "sql_md5": "e79a4860b745494b42537de792605aa8"
+    },
+    {
+      "version": "20260919092456",
+      "name": "add_whatsapp_connected_at",
+      "file": "20260919092456_add_whatsapp_connected_at.sql",
+      "sql_chars": 91,
+      "sql_md5": "86c02c382474cde95633188a5e47b87a"
+    },
+    {
+      "version": "20260920230725",
+      "name": "whatsapp_engine_integrity_indexes",
+      "file": "20260920230725_whatsapp_engine_integrity_indexes.sql",
+      "sql_chars": 840,
+      "sql_md5": "f70cd3ae195b461d7da5afa7d67e77b5"
+    },
+    {
+      "version": "20260921174026",
+      "name": "20260921090000_abos_operating_core",
+      "file": "20260921174026_20260921090000_abos_operating_core.sql",
+      "sql_chars": 13296,
+      "sql_md5": "d45604491273472b90ccac8866714dcf"
+    },
+    {
+      "version": "20260921174337",
+      "name": "20260921093000_abos_core_indexes_and_security_fix",
+      "file": "20260921174337_20260921093000_abos_core_indexes_and_security_fix.sql",
+      "sql_chars": 1271,
+      "sql_md5": "92eb20479a961b48845f530567d28703"
+    },
+    {
+      "version": "20260921181914",
+      "name": "20260921190000_abos_ai_core_foundation",
+      "file": "20260921181914_20260921190000_abos_ai_core_foundation.sql",
+      "sql_chars": 3598,
+      "sql_md5": "3f2a15ed5f9860b5d83f39fa1e44dbcb"
+    },
+    {
+      "version": "20260921182853",
+      "name": "20260921200000_abos_ai_v11_evaluation_foundation",
+      "file": "20260921182853_20260921200000_abos_ai_v11_evaluation_foundation.sql",
+      "sql_chars": 2111,
+      "sql_md5": "8b58227fbc7fb284a85947c89021834a"
+    },
+    {
+      "version": "20260921182922",
+      "name": "20260921201500_abos_ai_knowledge_layer",
+      "file": "20260921182922_20260921201500_abos_ai_knowledge_layer.sql",
+      "sql_chars": 1802,
+      "sql_md5": "3fd173e5f137d40884cd6ebfebc07ab0"
+    },
+    {
+      "version": "20260921183800",
+      "name": "abos_ai_v12_operating_memory",
+      "file": "20260921183800_abos_ai_v12_operating_memory.sql",
+      "sql_chars": 620,
+      "sql_md5": "e77040b35f930b0fc2bc832cabde64a7"
+    },
+    {
+      "version": "20260921184420",
+      "name": "abos_orders_human_reference",
+      "file": "20260921184420_abos_orders_human_reference.sql",
+      "sql_chars": 219,
+      "sql_md5": "70d0219f5982b624b2315565c41bc252"
+    },
+    {
+      "version": "20260921185451",
+      "name": "abos_ai_v13_evaluation_suite",
+      "file": "20260921185451_abos_ai_v13_evaluation_suite.sql",
+      "sql_chars": 4514,
+      "sql_md5": "5cfc8fb5d8625ef5dd968c09b76959e6"
+    },
+    {
+      "version": "20260921185504",
+      "name": "abos_ai_v13_eval_security",
+      "file": "20260921185504_abos_ai_v13_eval_security.sql",
+      "sql_chars": 809,
+      "sql_md5": "8fe642b237b2cba0bc2401204ba152cb"
+    },
+    {
+      "version": "20260921185552",
+      "name": "abos_ai_v13_eval_performance",
+      "file": "20260921185552_abos_ai_v13_eval_performance.sql",
+      "sql_chars": 1356,
+      "sql_md5": "e63aea2b0f5ecf5b1b88f6270c5d6d23"
+    },
+    {
+      "version": "20261002142911",
+      "name": "add_inventory_foundation",
+      "file": "20261002142911_add_inventory_foundation.sql",
+      "sql_chars": 4792,
+      "sql_md5": "708bf3a7b701e9d90004ea41ada8f6b7"
+    },
+    {
+      "version": "20261002143140",
+      "name": "record_initial_product_stock",
+      "file": "20261002143140_record_initial_product_stock.sql",
+      "sql_chars": 1008,
+      "sql_md5": "b0d837c59a2e80a47e0729023d3b67d5"
+    },
+    {
+      "version": "20261002145007",
+      "name": "wire_orders_to_inventory",
+      "file": "20261002145007_wire_orders_to_inventory.sql",
+      "sql_chars": 4632,
+      "sql_md5": "802d6b8d13afec82583e5823a67f0603"
+    },
+    {
+      "version": "20261002150021",
+      "name": "fix_order_items_membership_helper",
+      "file": "20261002150021_fix_order_items_membership_helper.sql",
+      "sql_chars": 339,
+      "sql_md5": "fcd5398f1e5a91d6864463f2134bdee0"
+    },
+    {
+      "version": "20261002151110",
+      "name": "make_order_creation_atomic",
+      "file": "20261002151110_make_order_creation_atomic.sql",
+      "sql_chars": 3675,
+      "sql_md5": "8fd362a67b2b16b2bfdc9210caff606c"
+    },
+    {
+      "version": "20261002154936",
+      "name": "convert_leads_to_customers",
+      "file": "20261002154936_convert_leads_to_customers.sql",
+      "sql_chars": 2672,
+      "sql_md5": "b090d8532179b1dccc0bff6e843dc056"
+    },
+    {
+      "version": "20261002154943",
+      "name": "convert_leads_to_customers_fix",
+      "file": "20261002154943_convert_leads_to_customers_fix.sql",
+      "sql_chars": 2711,
+      "sql_md5": "d83daa5cec5c64d0324a76f60d7cef14"
+    },
+    {
+      "version": "20261002160200",
+      "name": "auto_link_conversations_to_customers",
+      "file": "20261002160200_auto_link_conversations_to_customers.sql",
+      "sql_chars": 1527,
+      "sql_md5": "5be4a69c6967c57af36f09fdbd6c509b"
+    },
+    {
+      "version": "20261008212726",
+      "name": "abos_a2_step_1_business_knowledge",
+      "file": "20261008212726_abos_a2_step_1_business_knowledge.sql",
+      "sql_chars": 1745,
+      "sql_md5": "6dc90b5ecbd9eac104fa7266b0f80b99"
+    },
+    {
+      "version": "20261010201215",
+      "name": "ai_reply_feedback",
+      "file": "20261010201215_ai_reply_feedback.sql",
+      "sql_chars": 4287,
+      "sql_md5": "fa5c1d3b9452354123e95e540f91750a"
+    },
+    {
+      "version": "20261011161525",
+      "name": "ai_prompt_blocks",
+      "file": "20261011161525_ai_prompt_blocks.sql",
+      "sql_chars": 3417,
+      "sql_md5": "9451bb57bd99787bada732dd07c2efd2"
+    },
+    {
+      "version": "20261011190809",
+      "name": "ai_runtime_config",
+      "file": "20261011190809_ai_runtime_config.sql",
+      "sql_chars": 799,
+      "sql_md5": "f7f0e544c3f523fc21ceb353b2492edd"
+    },
+    {
+      "version": "20261018041441",
+      "name": "enforce_business_role_permissions",
+      "file": "20261018041441_enforce_business_role_permissions.sql",
+      "sql_chars": 8610,
+      "sql_md5": "d951230565c65e2aef1f1fc42c565e8a"
+    },
+    {
+      "version": "20261019070233",
+      "name": "business_logo_storage",
+      "file": "20261019070233_business_logo_storage.sql",
+      "sql_chars": 1912,
+      "sql_md5": "03ef3109fceab28859c3347c46eb4283"
+    },
+    {
+      "version": "20261019070254",
+      "name": "fix_business_logo_storage_policy_scope",
+      "file": "20261019070254_fix_business_logo_storage_policy_scope.sql",
+      "sql_chars": 1539,
+      "sql_md5": "cb1e321314396fdc888dac9b305fa432"
+    },
+    {
+      "version": "20261019165512",
+      "name": "product_image_storage",
+      "file": "20261019165512_product_image_storage.sql",
+      "sql_chars": 1832,
+      "sql_md5": "b3d6fa767aefe2fedba7128ce0484c3b"
+    },
+    {
+      "version": "20261022203041",
+      "name": "business_ai_settings",
+      "file": "20261022203041_business_ai_settings.sql",
+      "sql_chars": 1454,
+      "sql_md5": "8e0d1b2bbd61a6be4a27d7c2c7a6250e"
+    },
+    {
+      "version": "20261023061427",
+      "name": "business_payment_settings_and_manual_transfers",
+      "file": "20261023061427_business_payment_settings_and_manual_transfers.sql",
+      "sql_chars": 9782,
+      "sql_md5": "5ad79488b6d0eb77b86d1ceb093db1f8"
+    },
+    {
+      "version": "20261028201757",
+      "name": "instant_send_and_conversation_kind",
+      "file": "20261028201757_instant_send_and_conversation_kind.sql",
+      "sql_chars": 3214,
+      "sql_md5": "e0b54928b80a8eec999c3970a121f63c"
+    }
+  ],
+  "sql_character_count_python_codepoints": 118682
+}

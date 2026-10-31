@@ -1,5 +1,5 @@
--- Move internal SECURITY DEFINER helpers out of the PostgREST-exposed public schema.
 CREATE SCHEMA IF NOT EXISTS private;
+
 REVOKE ALL ON SCHEMA private FROM PUBLIC;
 GRANT USAGE ON SCHEMA private TO authenticated;
 

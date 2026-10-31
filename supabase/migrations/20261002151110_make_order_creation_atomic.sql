@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.create_order_atomic(
   p_business_id uuid,
   p_customer_id uuid DEFAULT NULL,

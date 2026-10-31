@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.convert_lead_to_customer(p_lead_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -7,9 +8,9 @@ AS $$
 DECLARE
   v_lead public.leads%ROWTYPE;
   v_customer public.customers%ROWTYPE;
-  v_created boolean := false;
 BEGIN
-  SELECT * INTO v_lead
+  SELECT *
+  INTO v_lead
   FROM public.leads
   WHERE id = p_lead_id
   FOR UPDATE;
@@ -23,7 +24,8 @@ BEGIN
   END IF;
 
   IF v_lead.customer_id IS NOT NULL THEN
-    SELECT * INTO v_customer
+    SELECT *
+    INTO v_customer
     FROM public.customers
     WHERE id = v_lead.customer_id
       AND business_id = v_lead.business_id;
@@ -44,7 +46,8 @@ BEGIN
   END IF;
 
   IF v_lead.phone IS NOT NULL THEN
-    SELECT * INTO v_customer
+    SELECT *
+    INTO v_customer
     FROM public.customers
     WHERE business_id = v_lead.business_id
       AND phone = v_lead.phone
@@ -53,7 +56,8 @@ BEGIN
   END IF;
 
   IF NOT FOUND AND v_lead.email IS NOT NULL THEN
-    SELECT * INTO v_customer
+    SELECT *
+    INTO v_customer
     FROM public.customers
     WHERE business_id = v_lead.business_id
       AND lower(email) = lower(v_lead.email)
@@ -77,8 +81,6 @@ BEGIN
       NULLIF(trim(COALESCE(v_lead.notes, '')), '')
     )
     RETURNING * INTO v_customer;
-
-    v_created := true;
   END IF;
 
   UPDATE public.leads
@@ -103,13 +105,13 @@ BEGIN
     v_lead.id,
     jsonb_build_object(
       'customer_id', v_customer.id,
-      'created_customer', v_created
+      'created_customer', v_customer.created_at = now()
     )
   );
 
   RETURN jsonb_build_object(
     'ok', true,
-    'created', v_created,
+    'created', true,
     'customer_id', v_customer.id,
     'lead_id', v_lead.id
   );

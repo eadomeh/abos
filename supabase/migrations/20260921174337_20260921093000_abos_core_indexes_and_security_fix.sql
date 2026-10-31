@@ -1,3 +1,4 @@
+
 create index if not exists activity_events_actor_user_idx on public.activity_events(actor_user_id);
 create index if not exists automation_runs_automation_idx on public.automation_runs(automation_id);
 create index if not exists automations_created_by_idx on public.automations(created_by);

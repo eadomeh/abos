@@ -1,0 +1,1 @@
+alter table private.whatsapp_connections add column if not exists connected_at timestamptz;

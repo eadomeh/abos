@@ -1,5 +1,3 @@
--- Helper function to look up a user ID by email for team invitations
--- SECURITY DEFINER so it can read from auth.users (which is not accessible to authenticated users directly)
 CREATE OR REPLACE FUNCTION get_user_id_by_email(email text)
 RETURNS uuid
 LANGUAGE sql
