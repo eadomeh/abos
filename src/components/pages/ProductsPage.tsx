@@ -70,7 +70,7 @@ export default function ProductsPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-emerald-500/20"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Product</span>
+            <span>Add Product</span>
           </button>
         )}
       </div>

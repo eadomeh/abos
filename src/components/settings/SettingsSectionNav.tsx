@@ -13,7 +13,7 @@ type SettingsSectionItem = {
 export type SettingsSectionId = 'business' | 'payments' | 'ai' | 'knowledge' | 'whatsapp' | 'team' | 'danger';
 
 type SettingsSectionNavProps = {
-  activeSection: SettingsSectionId;
+  activeSection: SettingsSectionId | null;
   onSelect: (section: SettingsSectionId) => void;
   businessName: string;
   role: string;

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import ImageCropEditor from '@/components/ImageCropEditor';
 import { cropImageFile } from '@/lib/imageCrop';
 import SettingsSectionNav, { type SettingsSectionId } from '@/components/settings/SettingsSectionNav';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import BusinessKnowledgeTab from '@/components/settings/BusinessKnowledgeTab';
 import BusinessPaymentsTab from '@/components/settings/BusinessPaymentsTab';
 import type { AiReplyLanguageMode, AiReplyTone, AiReplyLength, BusinessMembership, BusinessRole } from '@/types/database';
@@ -43,6 +44,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<SettingsSectionId>('business');
   const [mobileSectionOpen, setMobileSectionOpen] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   if (!activeBusiness) return null;
 
@@ -88,7 +90,7 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)] gap-4 sm:gap-5 lg:gap-7 items-start">
         <div className={`min-w-0 md:sticky md:top-4 ${mobileSectionOpen ? 'hidden md:block' : 'block'}`}>
           <SettingsSectionNav
-            activeSection={tab}
+            activeSection={isDesktop || mobileSectionOpen ? tab : null}
             onSelect={(section) => { setTab(section); setMobileSectionOpen(true); }}
             businessName={activeBusiness.name}
             role={activeBusiness.role}

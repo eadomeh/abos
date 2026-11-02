@@ -1,3 +1,4 @@
+import { getInitial } from '@/lib/avatar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
@@ -66,15 +67,15 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       ] = await Promise.all([
         supabase.from('orders').select('id,total_amount,status,created_at').eq('business_id', activeBusiness.id).gte('created_at', thirtyDaysAgo.toISOString()).order('created_at', { ascending: false }).limit(500),
         supabase.from('customers').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).gte('created_at', thirtyDaysAgo.toISOString()),
-        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id),
-        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).gt('unread_count', 0),
+        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).eq('kind', 'customer'),
+        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).eq('kind', 'customer').gt('unread_count', 0),
         supabase.from('leads').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).in('status', ['new','contacted','qualified']),
         supabase.from('leads').select('estimated_value,status').eq('business_id', activeBusiness.id).in('status', ['new','contacted','qualified']).limit(500),
         supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).neq('status', 'done'),
         supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).gte('due_at', dayStart.toISOString()).lt('due_at', new Date(dayStart.getTime() + 86400000).toISOString()).neq('status', 'done'),
         supabase.from('products').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).eq('is_active', true).lte('stock_quantity', 5),
         supabase.from('orders').select('id,total_amount,status,created_at').eq('business_id', activeBusiness.id).order('created_at', { ascending: false }).limit(5),
-        supabase.from('conversations').select('id,customer_name,last_message_preview,last_message_at,unread_count').eq('business_id', activeBusiness.id).order('last_message_at', { ascending: false, nullsFirst: false }).limit(5),
+        supabase.from('conversations').select('id,customer_name,last_message_preview,last_message_at,unread_count').eq('business_id', activeBusiness.id).eq('kind', 'customer').order('last_message_at', { ascending: false, nullsFirst: false }).limit(5),
         supabase.from('activity_events').select('id,event_type,entity_type,created_at,payload').eq('business_id', activeBusiness.id).order('created_at', { ascending: false }).limit(8),
         supabase.from('ai_insights').select('id,title,summary,severity,created_at,expires_at').eq('business_id', activeBusiness.id).eq('is_dismissed', false).order('created_at', { ascending: false }).limit(5),
       ]);
@@ -180,13 +181,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           ) : (
             <div className="h-14 w-14 shrink-0 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center">
               <span className="text-xl font-bold text-emerald-300">
-                {(activeBusiness?.name ?? 'A').trim().charAt(0).toUpperCase()}
+                {getInitial(activeBusiness?.name, 'A')}
               </span>
             </div>
           )}
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-emerald-400 mb-2">Operating command center</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{activeBusiness?.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight line-clamp-2 break-words">{activeBusiness?.name}</h1>
             <p className="text-sm text-slate-500 mt-1">Live business data from your ABOS workspace.</p>
           </div>
         </div>
@@ -294,7 +295,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             <div className="space-y-3">
               {recentConvos.map((convo) => (
                 <div key={convo.id} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
-                  <div className="w-9 h-9 rounded-full bg-white/[0.06] flex items-center justify-center text-xs font-semibold text-white">{convo.customer_name?.[0]?.toUpperCase() ?? '?'}</div>
+                  <div className="w-9 h-9 rounded-full bg-white/[0.06] flex items-center justify-center text-xs font-semibold text-white">{getInitial(convo.customer_name)}</div>
                   <div className="min-w-0 flex-1"><p className="text-sm text-white truncate">{convo.customer_name}</p><p className="text-[11px] text-slate-600 truncate">{convo.last_message_preview ?? 'No preview'}</p></div>
                   {convo.unread_count > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center">{convo.unread_count}</span>}
                 </div>

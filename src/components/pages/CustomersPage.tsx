@@ -1,3 +1,4 @@
+import { getInitial } from '@/lib/avatar';
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
@@ -210,7 +211,7 @@ export default function CustomersPage({ onNavigate }: { onNavigate?: (page: stri
                   className="flex items-center gap-4 flex-1 min-w-0 text-left"
                 >
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-sm font-medium text-white flex-shrink-0">
-                    {customer.name[0]?.toUpperCase()}
+                    {getInitial(customer.name)}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -335,7 +336,7 @@ function Customer360Panel({
         <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-              {customer.name[0]?.toUpperCase()}
+              {getInitial(customer.name)}
             </div>
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-400">Customer 360</p>

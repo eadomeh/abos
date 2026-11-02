@@ -1,11 +1,26 @@
-import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
-import type { Conversation, Message, Customer } from '@/types/database';
+import type { Conversation, Customer } from '@/types/database';
+import { getInitial } from '@/lib/avatar';
+import {
+  type ChatMessage,
+  confirmSent,
+  createOptimisticMessage,
+  messageKey,
+  newClientId,
+  patchMessage,
+  readSendFailure,
+  removeMessage,
+  serviceWindowState,
+  upsertMessage,
+  upsertMessages,
+} from '@/lib/messages';
 import {
   MessageCircle, Search, Send, Plus, X, Loader2, AlertCircle,
   Phone, ArrowLeft, CheckCheck, User, Users, Check, AlertTriangle,
   ShoppingCart, CircleDollarSign, Target, ClipboardList, ExternalLink,
+  Clock, RotateCw, ChevronDown, ArrowDown,
 } from 'lucide-react';
 
 type CustomerContext = {
@@ -19,141 +34,402 @@ type CustomerContext = {
   openTaskCount: number;
 };
 
+const PAGE_SIZE = 50;
+const SEND_ROLES = ['owner', 'admin', 'agent'];
+const STUCK_SENDING_MS = 90_000;
+
+const timeValue = (iso: string | null) => (iso ? Date.parse(iso) : Number.NEGATIVE_INFINITY);
+
+function sortConversations(list: Conversation[]): Conversation[] {
+  return [...list].sort((a, b) => timeValue(b.last_message_at) - timeValue(a.last_message_at));
+}
+
 export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { activeBusiness } = useBusiness();
+  const businessId = activeBusiness?.id ?? null;
+  const canSend = activeBusiness ? SEND_ROLES.includes(activeBusiness.role) : false;
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingConvos, setLoadingConvos] = useState(true);
+  const [convoError, setConvoError] = useState<string | null>(null);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [msgError, setMsgError] = useState<string | null>(null);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [draft, setDraft] = useState('');
   const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [customerContext, setCustomerContext] = useState<CustomerContext | null>(null);
   const [loadingCustomerContext, setLoadingCustomerContext] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [contextOpen, setContextOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [newBelow, setNewBelow] = useState(0);
 
-  // Fetch conversations
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const stickRef = useRef(true);
+  const selectedIdRef = useRef<string | null>(null);
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const lastKeyRef = useRef<string | null>(null);
+  const prependRef = useRef<{ prevHeight: number; prevTop: number } | null>(null);
+
+  // First load (and business switch): the only time the inbox shows a full-screen spinner.
   const fetchConversations = useCallback(async () => {
-    if (!activeBusiness) { setLoadingConvos(false); return; }
-    setLoadingConvos(true);
+    if (!businessId) { setLoadingConvos(false); return; }
     const { data, error } = await supabase
       .from('conversations')
       .select('*')
-      .eq('business_id', activeBusiness.id)
+      .eq('business_id', businessId)
+      .eq('kind', 'customer')
       .order('last_message_at', { ascending: false, nullsFirst: false });
 
-    if (!error && data) {
+    if (error || !data) {
+      setConvoError('Could not load conversations. Check your connection and try again.');
+    } else {
+      setConvoError(null);
       setConversations(data as Conversation[]);
     }
     setLoadingConvos(false);
-  }, [activeBusiness]);
+  }, [businessId]);
 
-  // Fetch messages for selected conversation
-  const fetchMessages = useCallback(async () => {
-    if (!selectedId) return;
+  // Quiet refresh after a dropped connection or when the app returns to the foreground.
+  // It merges into what is on screen and never clears or reloads it.
+  const resync = useCallback(async () => {
+    if (!businessId) return;
+    const threadId = selectedIdRef.current;
+    const [convoRes, msgRes] = await Promise.all([
+      supabase
+        .from('conversations')
+        .select('*')
+        .eq('business_id', businessId)
+        .eq('kind', 'customer')
+        .order('last_message_at', { ascending: false, nullsFirst: false }),
+      threadId
+        ? supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', threadId)
+            .order('created_at', { ascending: false })
+            .limit(PAGE_SIZE)
+        : Promise.resolve(null),
+    ]);
+
+    if (!convoRes.error && convoRes.data) setConversations(convoRes.data as Conversation[]);
+    if (threadId && selectedIdRef.current === threadId && msgRes && !msgRes.error && msgRes.data) {
+      const rows = [...(msgRes.data as ChatMessage[])].reverse();
+      setMessages((current) => upsertMessages(current, rows, 'monotonic'));
+    }
+  }, [businessId]);
+
+  useEffect(() => {
+    setConversations([]);
+    setSelectedId(null);
+    setMessages([]);
+    setConvoError(null);
+    setLoadingConvos(true);
+    void fetchConversations();
+  }, [fetchConversations]);
+
+  // Load the newest page of messages when a conversation is opened.
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+    setMessages([]);
+    setHasOlder(false);
+    setMsgError(null);
+    setNewBelow(0);
+    setContextOpen(false);
+    stickRef.current = true;
+    lastKeyRef.current = null;
+    prependRef.current = null;
+
+    if (!selectedId) { setLoadingMsgs(false); return; }
+
+    let cancelled = false;
     setLoadingMsgs(true);
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', selectedId)
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
+      if (cancelled) return;
+      if (error || !data) {
+        setMsgError('Could not load messages. Check your connection and try again.');
+      } else {
+        const rows = [...(data as ChatMessage[])].reverse();
+        setMessages((current) => upsertMessages(current, rows, 'monotonic'));
+        setHasOlder(data.length === PAGE_SIZE);
+      }
+      setLoadingMsgs(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [selectedId]);
+
+  // Realtime: conversation list. Changes are merged into the list, never refetched.
+  useEffect(() => {
+    if (!businessId) return;
+    let subscribedBefore = false;
+    const channel = supabase
+      .channel(`inbox-conversations:${businessId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations', filter: `business_id=eq.${businessId}` },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const removedId = (payload.old as { id?: string }).id;
+            if (removedId) setConversations((current) => current.filter((c) => c.id !== removedId));
+            return;
+          }
+          const row = payload.new as Conversation;
+          if (row.kind !== 'customer') return;
+          setConversations((current) =>
+            sortConversations(
+              current.some((c) => c.id === row.id)
+                ? current.map((c) => (c.id === row.id ? { ...c, ...row } : c))
+                : [...current, row],
+            ),
+          );
+        },
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return;
+        if (subscribedBefore) void resync();
+        subscribedBefore = true;
+      });
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [businessId, resync]);
+
+  // Realtime: messages of the open conversation. Merge by client id / id; never replace the list.
+  useEffect(() => {
+    if (!selectedId) return;
+    let subscribedBefore = false;
+    const channel = supabase
+      .channel(`thread-messages:${selectedId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedId}` },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const removedId = (payload.old as { id?: string }).id;
+            if (removedId) setMessages((current) => removeMessage(current, removedId));
+            return;
+          }
+          const row = payload.new as ChatMessage;
+          // A first INSERT can be older than what we already know; later UPDATEs are authoritative.
+          setMessages((current) => upsertMessage(current, row, payload.eventType === 'INSERT' ? 'monotonic' : 'authoritative'));
+        },
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return;
+        if (subscribedBefore) void resync();
+        subscribedBefore = true;
+      });
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [selectedId, resync]);
+
+  // Returning to the app or regaining the network: quiet resync (at most once every 3 seconds).
+  useEffect(() => {
+    let last = 0;
+    const run = () => {
+      const now = Date.now();
+      if (now - last < 3000) return;
+      last = now;
+      void resync();
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') run(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', run);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', run);
+    };
+  }, [resync]);
+
+  // Keeps the 24-hour window and "still sending" hints current.
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Mark the open conversation as read.
+  const selectedUnread = conversations.find((c) => c.id === selectedId)?.unread_count ?? 0;
+  useEffect(() => {
+    if (!selectedId || selectedUnread <= 0) return;
+    void supabase
+      .from('conversations')
+      .update({ unread_count: 0 })
+      .eq('id', selectedId)
+      .then(({ error }) => {
+        if (!error) {
+          setConversations((prev) => prev.map((c) => (c.id === selectedId ? { ...c, unread_count: 0 } : c)));
+        }
+      });
+  }, [selectedId, selectedUnread]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (stickRef.current) setNewBelow(0);
+  };
+
+  const scrollToBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    stickRef.current = true;
+    setNewBelow(0);
+  };
+
+  // Scrolling rules: status changes never move the thread; new messages follow only if you are
+  // already at the bottom (otherwise a "new messages" button appears); loading older messages
+  // keeps your place.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const last = messages[messages.length - 1];
+    const lastKey = last ? messageKey(last) : null;
+
+    if (prependRef.current) {
+      if (el) el.scrollTop = el.scrollHeight - prependRef.current.prevHeight + prependRef.current.prevTop;
+      prependRef.current = null;
+      lastKeyRef.current = lastKey;
+      return;
+    }
+
+    const changed = lastKey !== lastKeyRef.current;
+    const firstLoad = lastKeyRef.current === null && lastKey !== null;
+    lastKeyRef.current = lastKey;
+    if (!el || !changed || !last) return;
+
+    const sentByMe = last.direction === 'outgoing' && last.local === true;
+    if (firstLoad || stickRef.current || sentByMe) {
+      el.scrollTop = el.scrollHeight;
+      stickRef.current = true;
+    } else if (last.direction === 'incoming') {
+      setNewBelow((count) => count + 1);
+    }
+  }, [messages]);
+
+  const loadOlder = async () => {
+    const threadId = selectedId;
+    const oldest = messages.find((m) => !m.local);
+    if (!threadId || !oldest || loadingOlder) return;
+    setLoadingOlder(true);
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('conversation_id', selectedId)
-      .order('created_at', { ascending: true });
+      .eq('conversation_id', threadId)
+      .lt('created_at', oldest.created_at)
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE);
 
-    if (!error && data) {
-      setMessages(data as Message[]);
+    if (selectedIdRef.current === threadId) {
+      if (error || !data) {
+        setMsgError('Could not load earlier messages.');
+      } else {
+        const rows = [...(data as ChatMessage[])].reverse();
+        const el = scrollRef.current;
+        if (el && rows.length > 0) prependRef.current = { prevHeight: el.scrollHeight, prevTop: el.scrollTop };
+        setMessages((current) => upsertMessages(current, rows, 'monotonic'));
+        setHasOlder(data.length === PAGE_SIZE);
+      }
     }
-    setLoadingMsgs(false);
-  }, [selectedId]);
+    setLoadingOlder(false);
+  };
 
-  useEffect(() => { fetchConversations(); }, [fetchConversations]);
-  useEffect(() => { fetchMessages(); }, [fetchMessages]);
-
-  // Realtime subscription for conversations
-  useEffect(() => {
-    if (!activeBusiness) return;
-    const channel = supabase
-      .channel('conversations_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'conversations', filter: `business_id=eq.${activeBusiness.id}` },
-        () => { fetchConversations(); }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [activeBusiness, fetchConversations]);
-
-  // Realtime subscription for messages
-  useEffect(() => {
-    if (!selectedId) return;
-    const channel = supabase
-      .channel('messages_changes')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedId}` },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [selectedId]);
-
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Mark conversation as read when selected
-  useEffect(() => {
-    if (!selectedId) return;
-    const convo = conversations.find((c) => c.id === selectedId);
-    if (convo && convo.unread_count > 0) {
-      supabase
-        .from('conversations')
-        .update({ unread_count: 0 })
-        .eq('id', selectedId)
-        .then(() => {
-          setConversations((prev) => prev.map((c) => c.id === selectedId ? { ...c, unread_count: 0 } : c));
-        });
-    }
-  }, [selectedId, conversations]);
-
-  // Send message via WhatsApp edge function
-  const handleSend = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!draft.trim() || !selectedId || !activeBusiness) return;
-    setSending(true);
-    const content = draft.trim();
-    setDraft('');
+  // Sends through the WhatsApp edge function. The same client id is reused for every retry,
+  // so the server can never send one bubble twice.
+  const deliver = useCallback(async (conversationId: string, content: string, clientId: string) => {
+    if (inFlightRef.current.has(clientId)) return;
+    inFlightRef.current.add(clientId);
+    const apply = (change: (list: ChatMessage[]) => ChatMessage[]) => {
+      if (selectedIdRef.current === conversationId) setMessages(change);
+    };
 
     try {
-      const { data: result, error } = await supabase.functions.invoke('whatsapp-send', {
-        body: { conversationId: selectedId, content },
+      const { data, error } = await supabase.functions.invoke('whatsapp-send', {
+        body: { conversationId, content, clientId },
       });
 
-      if (error) throw error;
-      if (!result?.success) throw new Error(result?.error ?? 'Failed to send message');
+      if (error) {
+        const failure = await readSendFailure(error);
+        if (failure.keepSending) return;
+        apply((list) => patchMessage(list, clientId, {
+          status: 'failed',
+          error_code: failure.code,
+          error_message: failure.message,
+          retryable: failure.retryable,
+        }));
+        return;
+      }
 
-      fetchConversations();
+      const result = data as { success?: boolean; message_id?: string; wa_message_id?: string | null } | null;
+      if (!result?.success) {
+        apply((list) => patchMessage(list, clientId, {
+          status: 'failed',
+          error_message: 'The message could not be sent. Retry.',
+          retryable: true,
+        }));
+        return;
+      }
+      apply((list) => confirmSent(list, clientId, result.message_id ?? null, result.wa_message_id ?? null));
     } catch {
-      // Fallback: save as a local message with failed status so the user sees it
-      setMessages((prev) => [...prev, {
-        id: crypto.randomUUID(),
-        conversation_id: selectedId,
-        business_id: activeBusiness.id,
-        direction: 'outgoing',
-        content,
-        wa_message_id: null,
+      const failure = await readSendFailure(null);
+      apply((list) => patchMessage(list, clientId, {
         status: 'failed',
-        error_code: null,
-        channel: 'whatsapp',
-        metadata: {},
-        error_message: 'Could not send via WhatsApp',
-        created_at: new Date().toISOString(),
-      } as Message]);
+        error_message: failure.message,
+        retryable: true,
+      }));
+    } finally {
+      inFlightRef.current.delete(clientId);
     }
-    setSending(false);
+  }, []);
+
+  const windowState = loadingMsgs ? 'unknown' : serviceWindowState(messages, hasOlder, nowMs);
+  const composerLocked = !canSend || windowState === 'closed';
+
+  const handleSend = (e: FormEvent) => {
+    e.preventDefault();
+    const content = draft.trim();
+    if (!content || !selectedId || !businessId || composerLocked) return;
+    if (content.length > 4096) {
+      setMsgError('Messages are limited to 4096 characters.');
+      return;
+    }
+
+    const clientId = newClientId();
+    setMessages((current) => [
+      ...current,
+      createOptimisticMessage({ conversationId: selectedId, businessId, content, clientId }),
+    ]);
+    setDraft('');
+    setMsgError(null);
+    stickRef.current = true;
+    void deliver(selectedId, content, clientId);
+    inputRef.current?.focus();
+  };
+
+  const retrySend = (message: ChatMessage) => {
+    if (!selectedId || !message.client_id || !canSend) return;
+    const clientId = message.client_id;
+    setMessages((current) => patchMessage(current, clientId, {
+      status: 'sending',
+      error_code: null,
+      error_message: null,
+      retryable: undefined,
+    }));
+    void deliver(selectedId, message.content, clientId);
+  };
+
+  const dismissMessage = (message: ChatMessage) => {
+    setMessages((current) => removeMessage(current, message.client_id ?? message.id));
   };
 
   // Filter conversations by search
@@ -165,7 +441,7 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
 
   const selectedConvo = conversations.find((c) => c.id === selectedId) ?? null;
   useEffect(() => {
-    if (!selectedConvo?.customer_id || !activeBusiness) {
+    if (!selectedConvo?.customer_id || !businessId) {
       setCustomerContext(null);
       setLoadingCustomerContext(false);
       return;
@@ -181,26 +457,26 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
           .from('customers')
           .select('id,name,phone,email')
           .eq('id', selectedConvo.customer_id)
-          .eq('business_id', activeBusiness.id)
+          .eq('business_id', businessId)
           .maybeSingle(),
 
         supabase
           .from('orders')
           .select('total_amount,status')
-          .eq('business_id', activeBusiness.id)
+          .eq('business_id', businessId)
           .eq('customer_id', selectedConvo.customer_id),
 
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
-          .eq('business_id', activeBusiness.id)
+          .eq('business_id', businessId)
           .eq('customer_id', selectedConvo.customer_id)
           .not('status', 'in', '(won,lost)'),
 
         supabase
           .from('tasks')
           .select('id', { count: 'exact', head: true })
-          .eq('business_id', activeBusiness.id)
+          .eq('business_id', businessId)
           .eq('related_customer_id', selectedConvo.customer_id)
           .neq('status', 'done'),
       ]);
@@ -237,7 +513,7 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
     return () => {
       cancelled = true;
     };
-  }, [activeBusiness, selectedConvo?.customer_id]);
+  }, [businessId, selectedConvo?.customer_id]);
 
 
   if (loadingConvos) {
@@ -260,6 +536,8 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
               <h1 className="text-lg font-bold text-white">Conversations</h1>
             </div>
             <button
+              type="button"
+              aria-label="New conversation"
               onClick={() => setShowNew(true)}
               className="w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-center transition-colors"
             >
@@ -280,29 +558,45 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
 
         {/* List */}
         <div className="flex-1 overflow-y-auto">
-          {filteredConvos.length === 0 ? (
+          {convoError && (
+            <div className="m-3 flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-300 flex-1">{convoError}</p>
+              <button
+                type="button"
+                onClick={() => { setLoadingConvos(true); void fetchConversations(); }}
+                className="text-xs font-medium text-red-200 underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {filteredConvos.length === 0 && !convoError ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
               <div className="w-14 h-14 rounded-2xl glass flex items-center justify-center mb-4">
                 <MessageCircle className="w-7 h-7 text-slate-600" />
               </div>
               <h3 className="text-sm font-semibold text-slate-400 mb-1">
-                {search ? 'No matches found' : 'No conversations yet'}
+                {search ? 'No matches found' : 'No customer conversations yet'}
               </h3>
               <p className="text-xs text-slate-600 max-w-xs">
-                {search ? 'Try a different search term.' : 'Start a new conversation to chat with a customer.'}
+                {search
+                  ? 'Try a different search term.'
+                  : 'Customer chats appear here when they message your connected WhatsApp number. You can also start one with the plus button.'}
               </p>
             </div>
           ) : (
             filteredConvos.map((convo) => (
               <button
                 key={convo.id}
+                type="button"
                 onClick={() => setSelectedId(convo.id)}
                 className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.03] transition-all text-left ${
                   selectedId === convo.id ? 'bg-emerald-500/5' : 'hover:bg-white/[0.02]'
                 }`}
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-sm font-medium text-white flex-shrink-0">
-                  {convo.customer_name[0]?.toUpperCase() ?? '?'}
+                  {getInitial(convo.customer_name)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
@@ -337,13 +631,15 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
             {/* Chat header */}
             <div className="h-16 border-b border-white/[0.06] flex items-center px-4 gap-3 flex-shrink-0">
               <button
+                type="button"
+                aria-label="Back to conversations"
                 onClick={() => setSelectedId(null)}
                 className="md:hidden p-2 text-slate-400 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-sm font-medium text-white">
-                {selectedConvo.customer_name[0]?.toUpperCase() ?? '?'}
+                {getInitial(selectedConvo.customer_name)}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-white truncate">
@@ -372,89 +668,117 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
             <CustomerContextCard
               context={customerContext}
               loading={loadingCustomerContext}
+              open={contextOpen}
+              onToggle={() => setContextOpen((value) => !value)}
             />
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {loadingMsgs ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-12 h-12 rounded-xl glass flex items-center justify-center mb-3">
-                    <MessageCircle className="w-6 h-6 text-slate-600" />
+            <div className="relative flex-1 min-h-0">
+              <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="h-full overflow-y-auto p-4 space-y-3"
+              >
+                {hasOlder && !loadingMsgs && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => void loadOlder()}
+                      disabled={loadingOlder}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-slate-300 hover:text-white disabled:opacity-60"
+                    >
+                      {loadingOlder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                      Load earlier messages
+                    </button>
                   </div>
-                  <p className="text-sm text-slate-500">No messages yet. Send the first message below.</p>
-                </div>
-              ) : (
-                messages.map((msg, i) => {
-                  const isOutgoing = msg.direction === 'outgoing';
-                  const prevMsg = messages[i - 1];
-                  const showDate = !prevMsg || !isSameDay(prevMsg.created_at, msg.created_at);
-                  return (
-                    <div key={msg.id}>
-                      {showDate && (
-                        <div className="flex items-center justify-center my-4">
-                          <span className="text-[10px] text-slate-600 px-3 py-1 rounded-full glass">
-                            {formatDate(msg.created_at)}
-                          </span>
-                        </div>
-                      )}
-                      <div className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
-                          isOutgoing
-                            ? msg.status === 'failed'
-                              ? 'bg-red-500/10 border border-red-500/20 text-slate-200 rounded-br-md'
-                              : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-br-md'
-                            : 'glass text-slate-200 rounded-bl-md'
-                        }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
-                          <div className={`flex items-center gap-1 mt-1 ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
-                            <span className={`text-[10px] ${isOutgoing ? (msg.status === 'failed' ? 'text-red-400' : 'text-emerald-100/70') : 'text-slate-600'}`}>
-                              {formatTime(msg.created_at)}
-                            </span>
-                            {isOutgoing && msg.status === 'failed' ? (
-                              <AlertTriangle className="w-3 h-3 text-red-400" />
-                            ) : isOutgoing && msg.status === 'read' ? (
-                              <CheckCheck className="w-3 h-3 text-blue-300" />
-                            ) : isOutgoing && msg.status === 'delivered' ? (
-                              <CheckCheck className="w-3 h-3 text-emerald-100/70" />
-                            ) : isOutgoing && (
-                              <Check className="w-3 h-3 text-emerald-100/70" />
-                            )}
-                          </div>
-                          {isOutgoing && msg.status === 'failed' && msg.error_message && (
-                            <p className="text-[10px] text-red-400 mt-1">{msg.error_message}</p>
-                          )}
-                        </div>
-                      </div>
+                )}
+                {loadingMsgs && messages.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-12 h-12 rounded-xl glass flex items-center justify-center mb-3">
+                      <MessageCircle className="w-6 h-6 text-slate-600" />
                     </div>
-                  );
-                })
+                    <p className="text-sm text-slate-500">
+                      {canSend ? 'No messages yet. Send the first message below.' : 'No messages yet.'}
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((msg, i) => (
+                    <MessageBubble
+                      key={messageKey(msg)}
+                      message={msg}
+                      showDate={i === 0 || !isSameDay(messages[i - 1].created_at, msg.created_at)}
+                      nowMs={nowMs}
+                      canRetry={canSend}
+                      onRetry={retrySend}
+                      onDismiss={dismissMessage}
+                    />
+                  ))
+                )}
+              </div>
+              {newBelow > 0 && (
+                <button
+                  type="button"
+                  onClick={scrollToBottom}
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-xs font-medium shadow-lg"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  New messages
+                </button>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
-            {/* Message input */}
-            <form onSubmit={handleSend} className="p-4 border-t border-white/[0.06] flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={!draft.trim() || sending}
-                  className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 flex items-center justify-center text-white transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {msgError && (
+              <div className="mx-4 mb-2 flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-300 flex-1">{msgError}</p>
+                <button type="button" aria-label="Dismiss error" onClick={() => setMsgError(null)} className="text-red-300">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
+            )}
+
+            {/* Message input */}
+            {!canSend ? (
+              <div className="p-4 border-t border-white/[0.06] flex-shrink-0">
+                <p className="text-xs text-slate-500 text-center">
+                  Your role can read conversations but cannot send messages.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSend} className="p-4 border-t border-white/[0.06] flex-shrink-0">
+                {windowState === 'closed' && (
+                  <p className="text-xs text-amber-300/90 mb-2">
+                    The 24-hour WhatsApp window is closed. You can reply again after this customer messages you.
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    maxLength={4096}
+                    disabled={windowState === 'closed'}
+                    enterKeyHint="send"
+                    autoComplete="off"
+                    placeholder={windowState === 'closed' ? 'Window closed' : 'Type a message...'}
+                    className="flex-1 min-w-0 px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-base focus:outline-none focus:border-emerald-500/50 transition-all disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    aria-label="Send message"
+                    disabled={!draft.trim() || composerLocked}
+                    className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 flex items-center justify-center text-white transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -476,7 +800,7 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
           onClose={() => setShowNew(false)}
           onCreated={(convoId) => {
             setShowNew(false);
-            fetchConversations();
+            void resync();
             setSelectedId(convoId);
           }}
         />
@@ -485,16 +809,115 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
   );
 }
 
+function MessageBubble({
+  message,
+  showDate,
+  nowMs,
+  canRetry,
+  onRetry,
+  onDismiss,
+}: {
+  message: ChatMessage;
+  showDate: boolean;
+  nowMs: number;
+  canRetry: boolean;
+  onRetry: (message: ChatMessage) => void;
+  onDismiss: (message: ChatMessage) => void;
+}) {
+  const isOutgoing = message.direction === 'outgoing';
+  const failed = isOutgoing && message.status === 'failed';
+  const pending = isOutgoing && (message.status === 'sending' || message.status === 'queued');
+  const stuck = pending && nowMs - Date.parse(message.created_at) > STUCK_SENDING_MS;
+  const retryAllowed = failed && canRetry && Boolean(message.client_id) && message.retryable !== false;
+  const dismissAllowed = failed && message.local === true && message.retryable === false;
+
+  return (
+    <div>
+      {showDate && (
+        <div className="flex items-center justify-center my-4">
+          <span className="text-[10px] text-slate-600 px-3 py-1 rounded-full glass">
+            {formatDate(message.created_at)}
+          </span>
+        </div>
+      )}
+      <div className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
+        <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
+          isOutgoing
+            ? failed
+              ? 'bg-red-500/10 border border-red-500/20 text-slate-200 rounded-br-md'
+              : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-br-md'
+            : 'glass text-slate-200 rounded-bl-md'
+        }`}>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
+          <div className={`flex items-center gap-1 mt-1 ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
+            <span className={`text-[10px] ${isOutgoing ? (failed ? 'text-red-400' : 'text-emerald-100/70') : 'text-slate-600'}`}>
+              {formatTime(message.created_at)}
+            </span>
+            {isOutgoing && (
+              failed ? (
+                <AlertTriangle className="w-3 h-3 text-red-400" aria-label="Failed to send" />
+              ) : message.status === 'read' ? (
+                <CheckCheck className="w-3 h-3 text-blue-300" aria-label="Read" />
+              ) : message.status === 'delivered' ? (
+                <CheckCheck className="w-3 h-3 text-emerald-100/70" aria-label="Delivered" />
+              ) : message.status === 'sent' ? (
+                <Check className="w-3 h-3 text-emerald-100/70" aria-label="Sent" />
+              ) : (
+                <Clock className="w-3 h-3 text-emerald-100/70" aria-label="Sending" />
+              )
+            )}
+          </div>
+          {failed && message.error_message && (
+            <p className="text-[11px] text-red-300 mt-1">{message.error_message}</p>
+          )}
+          {stuck && (
+            <p className="text-[11px] text-emerald-50/80 mt-1">
+              No confirmation yet. Check WhatsApp before sending this again.
+            </p>
+          )}
+          {(retryAllowed || dismissAllowed) && (
+            <div className="flex items-center justify-end gap-3 mt-1.5">
+              {retryAllowed && (
+                <button
+                  type="button"
+                  onClick={() => onRetry(message)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-red-200 underline"
+                >
+                  <RotateCw className="w-3 h-3" />
+                  Retry
+                </button>
+              )}
+              {dismissAllowed && (
+                <button
+                  type="button"
+                  onClick={() => onDismiss(message)}
+                  className="text-[11px] font-medium text-slate-300 underline"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomerContextCard({
   context,
   loading,
+  open,
+  onToggle,
 }: {
   context: CustomerContext | null;
   loading: boolean;
+  open: boolean;
+  onToggle: () => void;
 }) {
   if (loading) {
     return (
-      <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+      <div className="px-4 py-2 border-b border-white/[0.06] bg-white/[0.01]">
         <div className="flex items-center gap-2 text-xs text-slate-600">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
           Loading customer context...
@@ -505,36 +928,44 @@ function CustomerContextCard({
 
   if (!context) {
     return (
-      <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+      <div className="px-4 py-2 border-b border-white/[0.06] bg-white/[0.01]">
         <p className="text-xs text-slate-600">No linked customer context.</p>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
-      <div className="flex items-center justify-between gap-3 mb-2.5">
-        <div>
-          <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-400">
-            Customer context
-          </p>
-          <p className="text-xs text-slate-500 mt-0.5">
+    <div className="border-b border-white/[0.06] bg-white/[0.01]">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-3 px-4 py-2 text-left"
+      >
+        <span className="min-w-0 text-xs text-slate-400 truncate">
+          <span className="text-[9px] uppercase tracking-[0.18em] text-emerald-400 mr-2">Customer context</span>
+          {context.orderCount} {context.orderCount === 1 ? 'order' : 'orders'} · NGN {context.totalSpent.toLocaleString()}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-500 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="px-4 pb-3">
+          <p className="text-xs text-slate-500 mb-2.5">
             {context.email ?? context.phone ?? 'Linked customer'}
           </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <ContextMetric icon={ShoppingCart} label="Orders" value={String(context.orderCount)} />
+            <ContextMetric
+              icon={CircleDollarSign}
+              label="Spent"
+              value={`NGN ${context.totalSpent.toLocaleString()}`}
+            />
+            <ContextMetric icon={Target} label="Leads" value={String(context.activeLeadCount)} />
+            <ContextMetric icon={ClipboardList} label="Tasks" value={String(context.openTaskCount)} />
+          </div>
         </div>
-        <span className="text-[9px] text-emerald-400/80">LIVE</span>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <ContextMetric icon={ShoppingCart} label="Orders" value={String(context.orderCount)} />
-        <ContextMetric
-          icon={CircleDollarSign}
-          label="Spent"
-          value={`NGN ${context.totalSpent.toLocaleString()}`}
-        />
-        <ContextMetric icon={Target} label="Leads" value={String(context.activeLeadCount)} />
-        <ContextMetric icon={ClipboardList} label="Tasks" value={String(context.openTaskCount)} />
-      </div>
+      )}
     </div>
   );
 }

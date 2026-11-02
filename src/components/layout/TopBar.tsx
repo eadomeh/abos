@@ -1,3 +1,4 @@
+import { getInitial } from '@/lib/avatar';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBusiness } from '@/context/BusinessContext';
@@ -24,7 +25,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
     user?.email ||
     activeBusiness?.name ||
     'ABOS Account';
-  const profileInitial = profileName.charAt(0).toUpperCase() || 'A';
+  const profileInitial = getInitial(profileName, 'A');
   const [bizDropdown, setBizDropdown] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
   const bizRef = useRef<HTMLDivElement>(null);

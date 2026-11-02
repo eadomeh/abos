@@ -1,3 +1,4 @@
+import { getInitial } from '@/lib/avatar';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
@@ -132,7 +133,7 @@ export default function LeadsPage({ onNavigate }: { onNavigate?: (page: string) 
                 className="flex items-center gap-3 min-w-0 flex-1 text-left"
               >
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-semibold flex-shrink-0">
-                  {lead.name[0]?.toUpperCase() ?? 'L'}
+                  {getInitial(lead.name, 'L')}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{lead.name}</p>
@@ -181,7 +182,7 @@ export default function LeadsPage({ onNavigate }: { onNavigate?: (page: string) 
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-semibold flex-shrink-0">
-                  {selectedLead.name[0]?.toUpperCase() ?? 'L'}
+                  {getInitial(selectedLead.name, 'L')}
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-400">Lead 360</p>

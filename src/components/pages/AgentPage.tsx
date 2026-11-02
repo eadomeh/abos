@@ -30,6 +30,7 @@ type AnalysisState = {
 };
 
 const STORAGE_PREFIX = 'abos_ai_agent_conversation_';
+const AGENT_ROLES = ['owner', 'admin', 'agent'];
 const quickPrompts = [
   'What should I focus on today?',
   'Which products are low in stock?',
@@ -39,6 +40,8 @@ const quickPrompts = [
 
 export default function AgentPage() {
   const { activeBusiness } = useBusiness();
+  // Only owner, admin and agent may run the agent (it can create leads, tasks and notes).
+  const canUseAgent = activeBusiness ? AGENT_ROLES.includes(activeBusiness.role) : false;
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
@@ -154,7 +157,7 @@ export default function AgentPage() {
 
   const sendMessage = async (event?: FormEvent, explicitText?: string) => {
     event?.preventDefault();
-    if (!activeBusiness || sending) return;
+    if (!activeBusiness || sending || !canUseAgent) return;
 
     const content = (explicitText ?? draft).trim();
     if (!content) return;
@@ -258,7 +261,7 @@ export default function AgentPage() {
         (persistedState ?? result.analysis ?? null) as AnalysisState | null,
       );
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'ABOS AI failed.');
+      setError(await describeAgentError(sendError));
     } finally {
       setSending(false);
     }
@@ -320,7 +323,7 @@ export default function AgentPage() {
                   <p className="text-sm text-slate-500 max-w-md mt-2">Ask ABOS about your products, orders, customers, leads, sales and next actions.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-6 w-full max-w-xl">
                     {quickPrompts.map((prompt) => (
-                      <button key={prompt} type="button" onClick={() => void sendMessage(undefined, prompt)} className="text-left px-4 py-3 rounded-xl glass glass-hover text-sm text-slate-300 hover:text-white">
+                      <button key={prompt} type="button" disabled={!canUseAgent} onClick={() => void sendMessage(undefined, prompt)} className="text-left px-4 py-3 rounded-xl glass glass-hover text-sm text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed">
                         {prompt}
                       </button>
                     ))}
@@ -367,6 +370,13 @@ export default function AgentPage() {
               <div ref={messagesEndRef} />
             </div>
 
+            {!canUseAgent ? (
+              <div className="p-3 md:p-4 border-t border-white/[0.06] flex-shrink-0">
+                <p className="text-xs text-slate-500 text-center">
+                  Your role cannot use the AI agent. Ask the business owner to change your access.
+                </p>
+              </div>
+            ) : (
             <form onSubmit={sendMessage} className="p-3 md:p-4 border-t border-white/[0.06] flex-shrink-0">
               <div className="flex items-end gap-2">
                 <textarea
@@ -388,6 +398,7 @@ export default function AgentPage() {
               </div>
               <p className="text-[10px] text-slate-700 mt-2 px-1">Enter to send · Shift+Enter for a new line</p>
             </form>
+            )}
           </section>
 
           <aside className="space-y-4">
@@ -465,4 +476,19 @@ function formatValue(value: string | null | undefined) {
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+const AGENT_ROLE_MESSAGE = 'Your role cannot use the AI agent. Ask the business owner to change your access.';
+
+// Turns agent and database errors into short, readable messages (no raw JSON or status codes).
+async function describeAgentError(error: unknown): Promise<string> {
+  const context = (error as { context?: unknown } | null)?.context as Response | undefined;
+  if (context && typeof context.status === 'number' && typeof context.clone === 'function') {
+    if (context.status === 403) return AGENT_ROLE_MESSAGE;
+    if (context.status === 401) return 'Your session expired. Reload the page and sign in again.';
+    return 'The AI agent could not answer right now. Please try again.';
+  }
+  const message = error instanceof Error ? error.message : '';
+  if (/row-level security|permission denied/i.test(message)) return AGENT_ROLE_MESSAGE;
+  return message || 'ABOS AI failed.';
 }

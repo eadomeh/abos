@@ -37,9 +37,10 @@ export interface BusinessPaymentSettings { business_id: string; bank_transfer_en
 export interface OrderPaymentReport { id: string; business_id: string; order_id: string; method: 'manual_bank_transfer'; amount: number; currency: string; status: ManualTransferStatus; transfer_reference: string | null; report_note: string | null; reported_by: string; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null; created_at: string; updated_at: string; }
 export type MessageDirection = 'incoming' | 'outgoing';
 export type ConversationChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'web';
-export interface Conversation { id: string; business_id: string; customer_id: string | null; customer_name: string; customer_phone: string | null; channel: ConversationChannel; external_thread_id: string | null; last_message_preview: string | null; last_message_at: string | null; unread_count: number; created_at: string; updated_at: string; }
-export type MessageStatus = 'sent' | 'delivered' | 'read' | 'failed';
-export interface Message { id: string; conversation_id: string; business_id: string; direction: MessageDirection; content: string; wa_message_id: string | null; channel: ConversationChannel; metadata: Record<string, unknown>; status: MessageStatus; error_code: string | null; error_message: string | null; created_at: string; }
+export type ConversationKind = 'customer' | 'ai_workspace';
+export interface Conversation { id: string; business_id: string; customer_id: string | null; customer_name: string; customer_phone: string | null; channel: ConversationChannel; kind?: ConversationKind; external_thread_id: string | null; last_message_preview: string | null; last_message_at: string | null; unread_count: number; created_at: string; updated_at: string; }
+export type MessageStatus = 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+export interface Message { id: string; conversation_id: string; business_id: string; direction: MessageDirection; content: string; wa_message_id: string | null; channel: ConversationChannel; metadata: Record<string, unknown>; status: MessageStatus; error_code: string | null; error_message: string | null; client_id?: string | null; created_at: string; }
 export interface Lead {
   id: string; business_id: string; customer_id: string | null; name: string; phone: string | null; email: string | null;
   source: string; status: LeadStatus; score: number; estimated_value: number; notes: string | null;
