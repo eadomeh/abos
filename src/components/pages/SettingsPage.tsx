@@ -6,6 +6,7 @@ import ImageCropEditor from '@/components/ImageCropEditor';
 import { cropImageFile } from '@/lib/imageCrop';
 import SettingsSectionNav, { type SettingsSectionId } from '@/components/settings/SettingsSectionNav';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import { markPerfPageReady, setPerfPage } from '@/lib/perf-debug';
 import BusinessKnowledgeTab from '@/components/settings/BusinessKnowledgeTab';
 import BusinessPaymentsTab from '@/components/settings/BusinessPaymentsTab';
 import type { AiReplyLanguageMode, AiReplyTone, AiReplyLength, BusinessMembership, BusinessRole } from '@/types/database';
@@ -91,7 +92,7 @@ export default function SettingsPage() {
         <div className={`min-w-0 md:sticky md:top-4 ${mobileSectionOpen ? 'hidden md:block' : 'block'}`}>
           <SettingsSectionNav
             activeSection={isDesktop || mobileSectionOpen ? tab : null}
-            onSelect={(section) => { setTab(section); setMobileSectionOpen(true); }}
+            onSelect={(section) => { setPerfPage(`settings/${section}`); setTab(section); setMobileSectionOpen(true); }}
             businessName={activeBusiness.name}
             role={activeBusiness.role}
           />
@@ -870,6 +871,10 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   }, [businessId]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  useEffect(() => {
+    if (!loading) markPerfPageReady('settings/whatsapp');
+  }, [loading]);
 
   const runHealthCheck = async () => {
     setCheckingHealth(true);

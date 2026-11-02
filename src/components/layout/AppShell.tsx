@@ -15,6 +15,7 @@ import TasksPage from '@/components/pages/TasksPage';
 import AgentPage from '@/components/pages/AgentPage';
 import PlaceholderPage from '@/components/pages/PlaceholderPage';
 import { Zap, Building2 } from 'lucide-react';
+import { setPerfPage } from '@/lib/perf-debug';
 
 export default function AppShell() {
   const { businesses, loading, activeBusiness } = useBusiness();
@@ -28,6 +29,7 @@ export default function AppShell() {
   }, [loading, businesses.length]);
 
   const handleNavigate = (nextPage: string) => {
+    setPerfPage(nextPage);
     setPage(nextPage);
     setMobileNavOpen(false);
   };

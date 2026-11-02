@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import ImageCropEditor from '@/components/ImageCropEditor';
 import { cropImageFile } from '@/lib/imageCrop';
 import type { Product } from '@/types/database';
+import { markPerfPageReady } from '@/lib/perf-debug';
 import {
   Package, Plus, Search, Pencil, Trash2, X, Loader2, AlertCircle,
   Box, ArrowRight, Filter, TrendingUp,
@@ -39,6 +40,10 @@ export default function ProductsPage() {
   }, [activeBusiness]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  useEffect(() => {
+    if (!loading) markPerfPageReady('products');
+  }, [loading]);
 
   const categories = ['all', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))) as string[]];
 

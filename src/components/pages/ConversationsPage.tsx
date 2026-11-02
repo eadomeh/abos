@@ -3,6 +3,7 @@ import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
 import type { Conversation, Customer } from '@/types/database';
 import { getInitial } from '@/lib/avatar';
+import { markPerfPageReady } from '@/lib/perf-debug';
 import {
   type ChatMessage,
   confirmSent,
@@ -131,6 +132,10 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
     setLoadingConvos(true);
     void fetchConversations();
   }, [fetchConversations]);
+
+  useEffect(() => {
+    if (!loadingConvos) markPerfPageReady('conversations');
+  }, [loadingConvos]);
 
   // Load the newest page of messages when a conversation is opened.
   useEffect(() => {
