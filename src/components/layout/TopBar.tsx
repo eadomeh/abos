@@ -2,7 +2,7 @@ import { getInitial } from '@/lib/avatar';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBusiness } from '@/context/BusinessContext';
-import { ChevronDown, LogOut, Plus, Menu, Check } from 'lucide-react';
+import { ChevronDown, LogOut, Plus, Menu, Check, Loader2 } from 'lucide-react';
 import { AbosMark } from '@/components/landing/abos-mark';
 
 interface TopBarProps {
@@ -28,6 +28,8 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
   const profileInitial = getInitial(profileName, 'A');
   const [bizDropdown, setBizDropdown] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const bizRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +41,27 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+
+    setSigningOut(true);
+    setSignOutError(null);
+
+    try {
+      const result = await signOut();
+
+      if (result.error) {
+        setSignOutError(result.error);
+        setSigningOut(false);
+      }
+    } catch (error) {
+      setSignOutError(
+        error instanceof Error ? error.message : 'Sign out failed. Please try again.'
+      );
+      setSigningOut(false);
+    }
+  };
 
   return (
     <header className="h-16 abos-bg border-b border-white/[0.06] flex items-center justify-between px-4 md:px-6 flex-shrink-0">
@@ -141,12 +164,24 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
             </div>
             <div className="p-1.5">
               <button
-                onClick={signOut}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-all text-left"
+                type="button"
+                onClick={() => void handleSignOut()}
+                disabled={signingOut}
+                aria-busy={signingOut}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] disabled:opacity-60 disabled:cursor-wait transition-all text-left"
               >
-                <LogOut className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-300">Sign Out</span>
+                {signingOut
+                  ? <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                  : <LogOut className="w-4 h-4 text-slate-400" />}
+                <span className="text-sm text-slate-300">
+                  {signingOut ? 'Signing out...' : 'Sign Out'}
+                </span>
               </button>
+              {signOutError && (
+                <p role="alert" className="px-3 pb-2 text-xs text-red-400">
+                  {signOutError}
+                </p>
+              )}
             </div>
           </div>
         )}
