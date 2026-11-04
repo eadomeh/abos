@@ -16,7 +16,7 @@ interface AuthContextValue {
   signInWithProvider: (provider: 'google') => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   updatePassword: (password: string) => Promise<AuthResult>;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -106,8 +106,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? readableError(error.message) : null };
   }, []);
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+  const signOut = useCallback(async (): Promise<AuthResult> => {
+    let remoteError: unknown = null;
+
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      remoteError = error;
+    } catch (error) {
+      remoteError = error;
+    }
+
+    if (remoteError) {
+      // Supabase's default browser storage key is namespaced by project ref.
+      // This client does not configure a custom storage key or storage adapter.
+      const projectRef = new URL(
+        import.meta.env.VITE_SUPABASE_URL as string
+      ).hostname.split('.')[0];
+      const storageKey = `sb-${projectRef}-auth-token`;
+
+      try {
+        window.localStorage.removeItem(storageKey);
+        window.localStorage.removeItem(`${storageKey}-code-verifier`);
+        window.localStorage.removeItem(`${storageKey}-user`);
+      } catch (storageError) {
+        console.error('ABOS sign-out: local session cleanup failed', storageError);
+        return {
+          error: 'ABOS could not clear this browser session. Allow site storage and try again.',
+        };
+      }
+
+      // With the persisted session gone, let Supabase perform its normal
+      // local cleanup and notify SIGNED_OUT subscribers without another
+      // authenticated /logout request.
+      try {
+        const { error: cleanupError } = await supabase.auth.signOut({ scope: 'local' });
+        if (cleanupError) {
+          console.warn('ABOS sign-out: SDK cleanup warning', cleanupError);
+        }
+      } catch (cleanupError) {
+        console.warn('ABOS sign-out: SDK cleanup warning', cleanupError);
+      }
+
+      const authError = remoteError as {
+        name?: string;
+        code?: string;
+        message?: string;
+      };
+
+      const missingSession =
+        authError.name === 'AuthSessionMissingError' ||
+        authError.code === 'session_not_found' ||
+        /session (missing|not found)/i.test(authError.message ?? '');
+
+      if (!missingSession) {
+        console.warn(
+          'ABOS sign-out: remote revocation was not confirmed; local credentials were cleared.',
+          remoteError
+        );
+      }
+    }
+
+    try {
+      window.localStorage.removeItem('abos_active_business_id');
+    } catch (storageError) {
+      // This preference is non-sensitive; authentication cleanup takes priority.
+      console.warn('ABOS sign-out: could not clear active business preference', storageError);
+    }
+
+    setSession(null);
+    setUser(null);
+
+    return { error: null };
   }, []);
 
   return (
