@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
 import type { Conversation, Customer } from '@/types/database';
@@ -47,6 +48,7 @@ function sortConversations(list: Conversation[]): Conversation[] {
 
 export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { activeBusiness } = useBusiness();
+  const queryClient = useQueryClient();
   const businessId = activeBusiness?.id ?? null;
   const canSend = activeBusiness ? SEND_ROLES.includes(activeBusiness.role) : false;
 
@@ -77,23 +79,37 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
   const prependRef = useRef<{ prevHeight: number; prevTop: number } | null>(null);
 
   // First load (and business switch): the only time the inbox shows a full-screen spinner.
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (force = false) => {
     if (!businessId) { setLoadingConvos(false); return; }
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('business_id', businessId)
-      .eq('kind', 'customer')
-      .order('last_message_at', { ascending: false, nullsFirst: false });
+    const queryKey = ['conversations', businessId] as const;
+    const cached = queryClient.getQueryData<Conversation[]>(queryKey);
+    if (cached) { setConversations(cached); setLoadingConvos(false); }
+    else setLoadingConvos(true);
 
-    if (error || !data) {
-      setConvoError('Could not load conversations. Check your connection and try again.');
-    } else {
+    try {
+      if (force) await queryClient.invalidateQueries({ queryKey, exact: true });
+      const rows = await queryClient.fetchQuery({
+        queryKey,
+        staleTime: 30_000,
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('business_id', businessId)
+            .eq('kind', 'customer')
+            .order('last_message_at', { ascending: false, nullsFirst: false });
+          if (error) throw error;
+          return (data ?? []) as Conversation[];
+        },
+      });
       setConvoError(null);
-      setConversations(data as Conversation[]);
+      setConversations(rows);
+    } catch {
+      setConvoError('Could not load conversations. Check your connection and try again.');
+    } finally {
+      setLoadingConvos(false);
     }
-    setLoadingConvos(false);
-  }, [businessId]);
+  }, [businessId, queryClient]);
 
   // Quiet refresh after a dropped connection or when the app returns to the foreground.
   // It merges into what is on screen and never clears or reloads it.
@@ -117,12 +133,16 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
         : Promise.resolve(null),
     ]);
 
-    if (!convoRes.error && convoRes.data) setConversations(convoRes.data as Conversation[]);
+    if (!convoRes.error && convoRes.data) {
+      const rows = convoRes.data as Conversation[];
+      setConversations(rows);
+      queryClient.setQueryData(['conversations', businessId], rows);
+    }
     if (threadId && selectedIdRef.current === threadId && msgRes && !msgRes.error && msgRes.data) {
       const rows = [...(msgRes.data as ChatMessage[])].reverse();
       setMessages((current) => upsertMessages(current, rows, 'monotonic'));
     }
-  }, [businessId]);
+  }, [businessId, queryClient]);
 
   useEffect(() => {
     setConversations([]);
@@ -180,7 +200,7 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
     if (!businessId) return;
     let subscribedBefore = false;
     const channel = supabase
-      .channel(`inbox-conversations:${businessId}`)
+      .channel(`workspace-live:${businessId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversations', filter: `business_id=eq.${businessId}` },
@@ -201,24 +221,9 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
           );
         },
       )
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') return;
-        if (subscribedBefore) void resync();
-        subscribedBefore = true;
-      });
-
-    return () => { void supabase.removeChannel(channel); };
-  }, [businessId, resync]);
-
-  // Realtime: messages of the open conversation. Merge by client id / id; never replace the list.
-  useEffect(() => {
-    if (!selectedId) return;
-    let subscribedBefore = false;
-    const channel = supabase
-      .channel(`thread-messages:${selectedId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedId}` },
+        { event: '*', schema: 'public', table: 'messages', filter: `business_id=eq.${businessId}` },
         (payload) => {
           if (payload.eventType === 'DELETE') {
             const removedId = (payload.old as { id?: string }).id;
@@ -226,7 +231,7 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
             return;
           }
           const row = payload.new as ChatMessage;
-          // A first INSERT can be older than what we already know; later UPDATEs are authoritative.
+          if (row.business_id !== businessId || row.conversation_id !== selectedIdRef.current) return;
           setMessages((current) => upsertMessage(current, row, payload.eventType === 'INSERT' ? 'monotonic' : 'authoritative'));
         },
       )
@@ -236,8 +241,11 @@ export default function ConversationsPage({ onNavigate }: { onNavigate?: (page: 
         subscribedBefore = true;
       });
 
-    return () => { void supabase.removeChannel(channel); };
-  }, [selectedId, resync]);
+    return () => {
+      void queryClient.invalidateQueries({ queryKey: ['conversations', businessId] });
+      void supabase.removeChannel(channel);
+    };
+  }, [businessId, queryClient, resync]);
 
   // Returning to the app or regaining the network: quiet resync (at most once every 3 seconds).
   useEffect(() => {

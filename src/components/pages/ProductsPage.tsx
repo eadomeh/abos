@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
 import ImageCropEditor from '@/components/ImageCropEditor';
@@ -12,6 +13,7 @@ import {
 
 export default function ProductsPage() {
   const { activeBusiness } = useBusiness();
+  const queryClient = useQueryClient();
   const canManageProducts = ['owner', 'admin', 'agent'].includes(activeBusiness?.role ?? '');
   const canDeleteProducts = activeBusiness?.role === 'owner';
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,21 +25,35 @@ export default function ProductsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Product | null>(null);
   const [showStockAdjust, setShowStockAdjust] = useState<Product | null>(null);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (force = false) => {
     if (!activeBusiness) { setProducts([]); setLoading(false); return; }
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('business_id', activeBusiness.id)
-      .order('created_at', { ascending: false });
-    if (error) {
-      setProducts([]);
-    } else {
-      setProducts(data as Product[]);
+    const queryKey = ['products', activeBusiness.id] as const;
+    const cached = queryClient.getQueryData<Product[]>(queryKey);
+    if (cached) { setProducts(cached); setLoading(false); }
+    else setLoading(true);
+
+    try {
+      if (force) await queryClient.invalidateQueries({ queryKey, exact: true });
+      const rows = await queryClient.fetchQuery({
+        queryKey,
+        staleTime: 30_000,
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('business_id', activeBusiness.id)
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+          return (data ?? []) as Product[];
+        },
+      });
+      setProducts(rows);
+    } catch {
+      if (!cached) setProducts([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [activeBusiness]);
+  }, [activeBusiness, queryClient]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -247,7 +263,7 @@ export default function ProductsPage() {
           businessId={activeBusiness!.id}
           currency={activeBusiness?.currency ?? 'NGN'}
           onClose={() => { setShowModal(false); setEditingProduct(null); }}
-          onSaved={() => { setShowModal(false); setEditingProduct(null); fetchProducts(); }}
+          onSaved={() => { setShowModal(false); setEditingProduct(null); fetchProducts(true); }}
         />
       )}
 
@@ -255,7 +271,7 @@ export default function ProductsPage() {
         <StockAdjustModal
           product={showStockAdjust}
           onClose={() => setShowStockAdjust(null)}
-          onSaved={() => { setShowStockAdjust(null); fetchProducts(); }}
+          onSaved={() => { setShowStockAdjust(null); fetchProducts(true); }}
         />
       )}
 
@@ -263,7 +279,7 @@ export default function ProductsPage() {
         <DeleteConfirm
           product={showDeleteConfirm}
           onClose={() => setShowDeleteConfirm(null)}
-          onDeleted={() => { setShowDeleteConfirm(null); fetchProducts(); }}
+          onDeleted={() => { setShowDeleteConfirm(null); fetchProducts(true); }}
         />
       )}
     </div>
@@ -285,7 +301,7 @@ function ProductModal({ product, businessId, currency, onClose, onSaved }: {
   const [lowStockThreshold, setLowStockThreshold] = useState(product?.low_stock_threshold?.toString() ?? '5');
   const [sku, setSku] = useState(product?.sku ?? '');
   const [category, setCategory] = useState(product?.category ?? '');
-  const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
+  const [imageUrl] = useState(product?.image_url ?? '');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageZoom, setImageZoom] = useState(1);

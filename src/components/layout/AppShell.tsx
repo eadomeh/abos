@@ -1,21 +1,35 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useState, useEffect } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import OnboardingModal from './OnboardingModal';
-import DashboardPage from '@/components/pages/DashboardPage';
-import ProductsPage from '@/components/pages/ProductsPage';
-import CustomersPage from '@/components/pages/CustomersPage';
-import OrdersPage from '@/components/pages/OrdersPage';
-import AnalyticsPage from '@/components/pages/AnalyticsPage';
-import SettingsPage from '@/components/pages/SettingsPage';
-import ConversationsPage from '@/components/pages/ConversationsPage';
-import LeadsPage from '@/components/pages/LeadsPage';
-import TasksPage from '@/components/pages/TasksPage';
-import AgentPage from '@/components/pages/AgentPage';
 import PlaceholderPage from '@/components/pages/PlaceholderPage';
 import { Zap, Building2 } from 'lucide-react';
 import { setPerfPage } from '@/lib/perf-debug';
+
+const DashboardPage = lazy(() => import('@/components/pages/DashboardPage'));
+const ProductsPage = lazy(() => import('@/components/pages/ProductsPage'));
+const CustomersPage = lazy(() => import('@/components/pages/CustomersPage'));
+const OrdersPage = lazy(() => import('@/components/pages/OrdersPage'));
+const AnalyticsPage = lazy(() => import('@/components/pages/AnalyticsPage'));
+const SettingsPage = lazy(() => import('@/components/pages/SettingsPage'));
+const ConversationsPage = lazy(() => import('@/components/pages/ConversationsPage'));
+const LeadsPage = lazy(() => import('@/components/pages/LeadsPage'));
+const TasksPage = lazy(() => import('@/components/pages/TasksPage'));
+const AgentPage = lazy(() => import('@/components/pages/AgentPage'));
+
+const pageLoaders: Record<string, () => Promise<unknown>> = {
+  dashboard: () => import('@/components/pages/DashboardPage'),
+  products: () => import('@/components/pages/ProductsPage'),
+  customers: () => import('@/components/pages/CustomersPage'),
+  orders: () => import('@/components/pages/OrdersPage'),
+  analytics: () => import('@/components/pages/AnalyticsPage'),
+  settings: () => import('@/components/pages/SettingsPage'),
+  conversations: () => import('@/components/pages/ConversationsPage'),
+  leads: () => import('@/components/pages/LeadsPage'),
+  tasks: () => import('@/components/pages/TasksPage'),
+  agent: () => import('@/components/pages/AgentPage'),
+};
 
 export default function AppShell() {
   const { businesses, loading, activeBusiness } = useBusiness();
@@ -33,6 +47,11 @@ export default function AppShell() {
     setPage(nextPage);
     setMobileNavOpen(false);
   };
+
+  const prefetchPage = useCallback((nextPage: string) => {
+    const loadChunk = pageLoaders[nextPage];
+    if (loadChunk) void loadChunk().catch(() => undefined);
+  }, []);
 
   const renderPage = () => {
     switch (page) {
@@ -62,7 +81,7 @@ export default function AppShell() {
 
   return (
     <div className="h-[100dvh] min-h-[100dvh] abos-bg flex overflow-hidden">
-      <Sidebar currentPage={page} onNavigate={handleNavigate} collapsed={sidebarCollapsed} mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
+      <Sidebar currentPage={page} onNavigate={handleNavigate} onPrefetchPage={prefetchPage} collapsed={sidebarCollapsed} mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -70,7 +89,7 @@ export default function AppShell() {
           onOpenOnboarding={() => setShowOnboarding(true)}
         />
         <main className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden overscroll-contain">
-          {activeBusiness ? renderPage() : (
+          {activeBusiness ? <Suspense fallback={<div className="flex items-center justify-center min-h-48" role="status" aria-label="Loading page"><div className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" /></div>}>{renderPage()}</Suspense> : (
             <div className="flex flex-col items-center justify-center min-h-full text-center px-4 py-10">
               <div className="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">
                 <Building2 className="w-8 h-8 text-slate-600" />

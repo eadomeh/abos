@@ -1,12 +1,22 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BusinessProvider } from '@/context/BusinessContext';
-import AuthScreen from '@/components/auth/AuthScreen';
-import AppShell from '@/components/layout/AppShell';
-import LandingPage from '@/components/LandingPage';
+
 import { AbosMark } from '@/components/landing/abos-mark';
 import { isEmailVerificationCallback, supabase } from '@/lib/supabase';
 import { getAppView } from './app-view';
+
+const AuthScreen = lazy(() => import('@/components/auth/AuthScreen'));
+const AppShell = lazy(() => import('@/components/layout/AppShell'));
+const LandingPage = lazy(() => import('@/components/LandingPage'));
+
+function AppChunkFallback() {
+  return (
+    <div className="min-h-screen abos-bg flex items-center justify-center" role="status" aria-label="Loading ABOS">
+      <div className="w-7 h-7 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -58,16 +68,16 @@ function AppContent() {
   if (view === 'workspace') {
     return (
       <BusinessProvider>
-        <AppShell />
+        <Suspense fallback={<AppChunkFallback />}><AppShell /></Suspense>
       </BusinessProvider>
     );
   }
 
   if (view === 'auth') {
-    return <AuthScreen onBack={() => { setShowAuth(false); setForceAuth(false); }} emailVerified={emailVerified} onRecoveryComplete={() => setForceAuth(false)} />;
+    return <Suspense fallback={<AppChunkFallback />}><AuthScreen onBack={() => { setShowAuth(false); setForceAuth(false); }} emailVerified={emailVerified} onRecoveryComplete={() => setForceAuth(false)} /></Suspense>;
   }
 
-  return <LandingPage onGetStarted={() => setShowAuth(true)} onLogin={() => setShowAuth(true)} />;
+  return <Suspense fallback={<AppChunkFallback />}><LandingPage onGetStarted={() => setShowAuth(true)} onLogin={() => setShowAuth(true)} /></Suspense>;
 }
 
 export default function App() {

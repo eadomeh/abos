@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -825,6 +826,7 @@ type WhatsAppHealthReport = {
 };
 
 function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boolean }) {
+  const queryClient = useQueryClient();
   const [connection, setConnection] = useState<{
     phone_number_id: string;
     waba_id: string;
@@ -852,23 +854,33 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
   const metaAppId = import.meta.env.VITE_META_APP_ID ?? '';
   const embeddedSignupConfigId = import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID ?? '';
 
-  const loadStatus = useCallback(async () => {
-    setLoading(true);
+  const loadStatus = useCallback(async (force = false) => {
+    const queryKey = ['whatsapp-connection-status', businessId] as const;
+    const cached = queryClient.getQueryData<NonNullable<typeof connection> | null>(queryKey);
+    if (cached !== undefined) { setConnection(cached); setLoading(false); }
+    else setLoading(true);
     setError(null);
-    const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
-      body: { action: 'status', businessId },
-    });
 
-    if (invokeError) {
+    try {
+      if (force) await queryClient.invalidateQueries({ queryKey, exact: true });
+      const next = await queryClient.fetchQuery({
+        queryKey,
+        staleTime: 30_000,
+        queryFn: async () => {
+          const { data, error: invokeError } = await supabase.functions.invoke('whatsapp-connection', {
+            body: { action: 'status', businessId },
+          });
+          if (invokeError) throw invokeError;
+          return data?.connection ?? null;
+        },
+      });
+      setConnection(next);
+    } catch {
       setError('Could not load WhatsApp connection status.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const next = data?.connection ?? null;
-    setConnection(next);
-    setLoading(false);
-  }, [businessId]);
+  }, [businessId, queryClient]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
@@ -1074,7 +1086,7 @@ function WhatsAppTab({ businessId, canEdit }: { businessId: string; canEdit: boo
     }
 
     setState('connected');
-    await loadStatus();
+    await loadStatus(true);
   };
 
   const launchEmbeddedSignup = () => {

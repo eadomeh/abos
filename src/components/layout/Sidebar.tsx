@@ -8,6 +8,7 @@ import { AbosMark } from '@/components/landing/abos-mark';
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
+  onPrefetchPage?: (page: string) => void;
   collapsed: boolean;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -28,7 +29,7 @@ const navItems = [
 ];
 
 export default function Sidebar({
-  currentPage, onNavigate, collapsed, mobileOpen = false, onCloseMobile,
+  currentPage, onNavigate, onPrefetchPage, collapsed, mobileOpen = false, onCloseMobile,
 }: SidebarProps) {
   const { activeBusiness } = useBusiness();
 
@@ -57,7 +58,7 @@ export default function Sidebar({
             const Icon = item.icon;
             const active = currentPage === item.id;
             return (
-              <button key={item.id} onClick={() => { onNavigate(item.id); onCloseMobile?.(); }} title={collapsed ? item.label : undefined}
+              <button key={item.id} onClick={() => { onNavigate(item.id); onCloseMobile?.(); }} onPointerEnter={() => onPrefetchPage?.(item.id)} onFocus={() => onPrefetchPage?.(item.id)} onTouchStart={() => onPrefetchPage?.(item.id)} title={collapsed ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${active
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'}`}>

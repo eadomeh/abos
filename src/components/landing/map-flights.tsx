@@ -8,19 +8,11 @@ const SVG_H = 240;
 function FlightBubble({ flight }: { flight: MapFlight }) {
   const abos = flight.side === "abos";
   return (
-    <div
-      className={cn(
-        "flex max-w-[9.25rem] items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9)] ring-1 sm:max-w-[12rem]",
-        abos ? "bg-wa-out ring-signal/30" : "bg-charcoal/95 ring-white/14 backdrop-blur-sm",
-      )}
-    >
-      <img
-        src={flight.avatar}
-        alt=""
-        width={20}
-        height={20}
-        className="size-5 shrink-0 rounded-full object-cover ring-1 ring-white/20"
-      />
+    <div className={cn(
+      "flex max-w-[9.25rem] items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9)] ring-1 sm:max-w-[12rem]",
+      abos ? "bg-wa-out ring-signal/30" : "bg-charcoal/95 ring-white/14 backdrop-blur-sm",
+    )}>
+      <img src={flight.avatar} alt="" width={20} height={20} className="size-5 shrink-0 rounded-full object-cover ring-1 ring-white/20" />
       <p className="truncate text-[10px] leading-none text-wa-text sm:text-[11px]">{flight.text}</p>
     </div>
   );
@@ -33,9 +25,26 @@ function anchorTransform(x: number): string {
 }
 
 export function MapFlights({ reduced = false }: { reduced?: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const sizeRef = useRef({ width: 0, height: 0 });
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let syncReducedPositions = () => {};
+    const updateSize = () => {
+      sizeRef.current = { width: container.clientWidth, height: container.clientHeight };
+      if (reduced) syncReducedPositions();
+    };
+    updateSize();
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(updateSize)
+      : null;
+    resizeObserver?.observe(container);
+    window.addEventListener("resize", updateSize, { passive: true });
+
     const paths = MAP_FLIGHTS.map((flight) => {
       const from = cityById(flight.from);
       const to = cityById(flight.to);
@@ -48,18 +57,26 @@ export function MapFlights({ reduced = false }: { reduced?: boolean }) {
     const place = (index: number, x: number, y: number, opacity: number) => {
       const node = nodeRefs.current[index];
       if (!node) return;
-      node.style.left = `${(x / SVG_W) * 100}%`;
-      node.style.top = `${(y / SVG_H) * 100}%`;
+      const { width, height } = sizeRef.current;
+      const px = (x / SVG_W) * width;
+      const py = (y / SVG_H) * height;
       node.style.opacity = String(opacity);
-      node.style.transform = anchorTransform(x);
+      node.style.transform = `translate3d(${px.toFixed(2)}px, ${py.toFixed(2)}px, 0) ${anchorTransform(x)}`;
     };
 
-    if (reduced) {
+    syncReducedPositions = () => {
       paths.forEach((row, index) => {
         const pt = row.el.getPointAtLength(row.len * (0.4 + (index % 3) * 0.08));
         place(index, pt.x, pt.y, index < 4 ? 1 : 0);
       });
-      return;
+    };
+
+    if (reduced) {
+      syncReducedPositions();
+      return () => {
+        resizeObserver?.disconnect();
+        window.removeEventListener("resize", updateSize);
+      };
     }
 
     let raf = 0;
@@ -69,10 +86,7 @@ export function MapFlights({ reduced = false }: { reduced?: boolean }) {
       paths.forEach((row, index) => {
         const cycle = row.flight.duration * 1000;
         const local = elapsed - row.flight.delay * 1000;
-        if (local < 0) {
-          place(index, 0, 0, 0);
-          return;
-        }
+        if (local < 0) { place(index, 0, 0, 0); return; }
         const u = (local % cycle) / cycle;
         const pt = row.el.getPointAtLength(u * row.len);
         const fade = u < 0.08 ? u / 0.08 : u > 0.9 ? (1 - u) / 0.1 : 1;
@@ -81,20 +95,17 @@ export function MapFlights({ reduced = false }: { reduced?: boolean }) {
       raf = window.requestAnimationFrame(tick);
     };
     raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateSize);
+    };
   }, [reduced]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
+    <div ref={containerRef} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
       {MAP_FLIGHTS.map((flight, index) => (
-        <div
-          key={flight.id}
-          ref={(node) => {
-            nodeRefs.current[index] = node;
-          }}
-          className="map-flight absolute left-0 top-0"
-          style={{ opacity: 0 }}
-        >
+        <div key={flight.id} ref={(node) => { nodeRefs.current[index] = node; }} className="map-flight absolute left-0 top-0" style={{ opacity: 0, transform: "translate3d(0, 0, 0)" }}>
           <FlightBubble flight={flight} />
         </div>
       ))}

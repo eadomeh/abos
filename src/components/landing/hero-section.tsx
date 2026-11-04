@@ -16,7 +16,7 @@ export function HeroSection() {
           AI Business Operating System
         </div>
 
-        <h1 className="hero-intro hero-intro-2 font-display text-display font-semibold tracking-[-0.055em] text-harmattan">
+        <h1 className="font-display text-display font-semibold tracking-[-0.055em] text-harmattan">
           Run the business from
           <span className="mt-1 block text-signal">one intelligent system.</span>
         </h1>

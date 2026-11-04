@@ -1,7 +1,8 @@
 import { getInitial } from '@/lib/avatar';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchWorkspaceBootstrap, type DashboardSnapshot } from '@/lib/workspace-bootstrap';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
-import { supabase } from '@/lib/supabase';
 import {
   Activity, AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, Clock3,
   Inbox, Package, RefreshCw, ShoppingCart, Sparkles, Target, TrendingUp,
@@ -24,6 +25,7 @@ const emptyTrend = () => Array.from({ length: 7 }, (_, index) => {
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const { activeBusiness } = useBusiness();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,100 +43,65 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const load = useCallback(async (manual = false) => {
     if (!activeBusiness) return;
     if (manual) setRefreshing(true);
-    else setLoading(true);
+
+    const now = new Date();
+    const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
+    const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
+    const sevenDaysAgo = new Date(dayStart); sevenDaysAgo.setDate(dayStart.getDate() - 6);
+    const dayKey = `${dayStart.getFullYear()}-${dayStart.getMonth() + 1}-${dayStart.getDate()}`;
+    const queryKey = ['workspace-bootstrap', activeBusiness.id, dayKey] as const;
+
+    const applySnapshot = (snapshot: DashboardSnapshot) => {
+      setStats(snapshot.stats);
+      setTrend(snapshot.trend);
+      setRecentOrders(snapshot.recentOrders);
+      setRecentConvos(snapshot.recentConvos);
+      setActivities(snapshot.activities);
+      setInsights(snapshot.insights);
+    };
+
+    const cached = queryClient.getQueryData<DashboardSnapshot>(queryKey);
+    if (cached) {
+      applySnapshot(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError(null);
 
     try {
-      const now = new Date();
-      const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
-      const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
-      const sevenDaysAgo = new Date(dayStart); sevenDaysAgo.setDate(dayStart.getDate() - 6);
-
-      const [
-        orders,
-        customerCount,
-        conversations,
-        unreadConversations,
-        openLeads,
-        openLeadRows,
-        openTasks,
-        dueToday,
-        lowStock,
-        recentOrderRows,
-        recentConversationRows,
-        activityRows,
-        insightRows,
-      ] = await Promise.all([
-        supabase.from('orders').select('id,total_amount,status,created_at').eq('business_id', activeBusiness.id).gte('created_at', thirtyDaysAgo.toISOString()).order('created_at', { ascending: false }).limit(500),
-        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).gte('created_at', thirtyDaysAgo.toISOString()),
-        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).eq('kind', 'customer'),
-        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).eq('kind', 'customer').gt('unread_count', 0),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).in('status', ['new','contacted','qualified']),
-        supabase.from('leads').select('estimated_value,status').eq('business_id', activeBusiness.id).in('status', ['new','contacted','qualified']).limit(500),
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).neq('status', 'done'),
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).gte('due_at', dayStart.toISOString()).lt('due_at', new Date(dayStart.getTime() + 86400000).toISOString()).neq('status', 'done'),
-        supabase.from('products').select('id', { count: 'exact', head: true }).eq('business_id', activeBusiness.id).eq('is_active', true).lte('stock_quantity', 5),
-        supabase.from('orders').select('id,total_amount,status,created_at').eq('business_id', activeBusiness.id).order('created_at', { ascending: false }).limit(5),
-        supabase.from('conversations').select('id,customer_name,last_message_preview,last_message_at,unread_count').eq('business_id', activeBusiness.id).eq('kind', 'customer').order('last_message_at', { ascending: false, nullsFirst: false }).limit(5),
-        supabase.from('activity_events').select('id,event_type,entity_type,created_at,payload').eq('business_id', activeBusiness.id).order('created_at', { ascending: false }).limit(8),
-        supabase.from('ai_insights').select('id,title,summary,severity,created_at,expires_at').eq('business_id', activeBusiness.id).eq('is_dismissed', false).order('created_at', { ascending: false }).limit(5),
-      ]);
-
-      const failures = [orders, customerCount, conversations, unreadConversations, openLeads, openLeadRows, openTasks, dueToday, lowStock, recentOrderRows, recentConversationRows, activityRows, insightRows]
-        .filter((result) => result.error);
-      if (failures.length > 0) throw failures[0].error;
-
-      const orderRows = (orders.data ?? []) as OrderRow[];
-      const completed = orderRows.filter((order) => order.status === 'completed');
-      const revenue30d = completed.reduce((sum, order) => sum + Number(order.total_amount), 0);
-      const revenueToday = completed
-        .filter((order) => new Date(order.created_at) >= dayStart)
-        .reduce((sum, order) => sum + Number(order.total_amount), 0);
-
-      const trendRows = emptyTrend();
-      const trendMap = new Map(trendRows.map((item) => [item.key, item]));
-      completed.filter((order) => new Date(order.created_at) >= sevenDaysAgo).forEach((order) => {
-        const key = new Date(order.created_at).toISOString().slice(0, 10);
-        const bucket = trendMap.get(key);
-        if (bucket) bucket.amount += Number(order.total_amount);
+      if (manual) await queryClient.invalidateQueries({ queryKey, exact: true });
+      const snapshot = await queryClient.fetchQuery({
+        queryKey,
+        staleTime: 30_000,
+        queryFn: () => fetchWorkspaceBootstrap({
+          businessId: activeBusiness.id,
+          now,
+          dayStart,
+          thirtyDaysAgo,
+          sevenDaysAgo,
+        }),
       });
-
-      const pipelineValue = ((openLeadRows.data ?? []) as Array<{ estimated_value: number | string | null }>)
-        .reduce((sum, lead) => sum + Number(lead.estimated_value ?? 0), 0);
-
-      setStats({
-        revenue30d, revenueToday, orders30d: orderRows.length, customers30d: customerCount.count ?? 0,
-        conversations: conversations.count ?? 0, unread: unreadConversations.count ?? 0,
-        openLeads: openLeads.count ?? 0, pipelineValue, openTasks: openTasks.count ?? 0,
-        dueToday: dueToday.count ?? 0, lowStock: lowStock.count ?? 0,
-      });
-      setTrend(trendRows);
-      setRecentOrders((recentOrderRows.data ?? []) as OrderRow[]);
-      setRecentConvos((recentConversationRows.data ?? []) as ConversationRow[]);
-      setActivities((activityRows.data ?? []) as ActivityRow[]);
-      const activeInsights = ((insightRows.data ?? []) as Array<InsightRow & { expires_at?: string | null }>)
-        .filter((insight) => !insight.expires_at || new Date(insight.expires_at) > now)
-        .slice(0, 3);
-      setInsights(activeInsights);
+      applySnapshot(snapshot);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeBusiness]);
+  }, [activeBusiness, queryClient]);
 
   useEffect(() => { void load(); }, [load]);
 
   const currency = activeBusiness?.currency ?? 'NGN';
-  const formatMoney = (amount: number) => `${currency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const formatMoney = useCallback((amount: number) => `${currency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, [currency]);
 
   const trendMax = Math.max(...trend.map((point) => point.amount), 1);
   const conversionSignal = useMemo(() => {
     if (stats.openLeads === 0) return 'No active leads yet. Capture every serious enquiry.';
     if (stats.pipelineValue === 0) return `${stats.openLeads} active leads need estimated deal values.`;
     return `${formatMoney(stats.pipelineValue)} is sitting in the active pipeline.`;
-  }, [stats.openLeads, stats.pipelineValue, currency]);
+  }, [stats.openLeads, stats.pipelineValue, formatMoney]);
 
   const signal = stats.lowStock > 0
     ? `${stats.lowStock} active product${stats.lowStock === 1 ? '' : 's'} are at or below 5 units.`
