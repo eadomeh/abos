@@ -40,7 +40,6 @@ const quickPrompts = [
 
 export default function AgentPage() {
   const { activeBusiness } = useBusiness();
-  // Only owner, admin and agent may run the agent (it can create leads, tasks and notes).
   const canUseAgent = activeBusiness ? AGENT_ROLES.includes(activeBusiness.role) : false;
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -234,13 +233,9 @@ export default function AgentPage() {
       }
 
       setMessages((current) => [...current, assistantMessage as Message]);
-
-      // Show analysis immediately from the function response so the UI does not
-      // wait on a multi-second poll loop after the answer is already on screen.
       setAnalysis((result.analysis ?? null) as AnalysisState | null);
       setSending(false);
 
-      // Optional single refresh: Edge Function may persist a richer state shortly after.
       const refreshBusinessId = activeBusiness.id;
       const refreshConversationId = activeConversationId;
       void (async () => {
@@ -325,17 +320,19 @@ export default function AgentPage() {
                 </div>
               ) : (
                 messages.map((message) => {
-                  // Owner workspace: ABOS (assistant) on the left, operator on the right.
                   const isAssistant = message.direction === 'outgoing';
                   return (
                     <div key={message.id} className={isAssistant ? 'flex justify-start' : 'flex justify-end'}>
-                      <div className={`max-w-[88%] md:max-w-[78%] flex flex-col ${isAssistant ? '' : 'items-end'}`}>
+                      <div className={`max-w-[88%] md:max-w-[78%] flex flex-col gap-1 ${isAssistant ? 'items-start' : 'items-end'}`}>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-600 px-1">
+                          {isAssistant ? 'ABOS' : 'You'}
+                        </span>
                         <div className={isAssistant
-                          ? 'px-4 py-3 rounded-2xl rounded-bl-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white'
-                          : 'px-4 py-3 rounded-2xl rounded-br-md bg-white/[0.04] border border-white/[0.07] text-slate-200'}>
+                          ? 'px-4 py-3 rounded-2xl rounded-tl-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/10'
+                          : 'px-4 py-3 rounded-2xl rounded-tr-sm bg-white/[0.06] border border-white/[0.08] text-slate-100'}>
                           <p className="text-sm leading-6 whitespace-pre-wrap break-words">{message.content}</p>
                         </div>
-                        <span className="text-[10px] text-slate-700 mt-1 px-1">{formatTime(message.created_at)}</span>
+                        <span className="text-[10px] text-slate-700 px-1">{formatTime(message.created_at)}</span>
                       </div>
                     </div>
                   );
@@ -343,11 +340,10 @@ export default function AgentPage() {
               )}
 
               {sending && (
-                <div className="flex justify-start">
-                  <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white/[0.04] border border-white/[0.07] flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
-                    <span className="text-sm text-slate-400">ABOS is thinking</span>
-                    <span className="flex items-center gap-1" aria-label="ABOS is thinking">
+                <div className="flex justify-start" aria-live="polite">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl rounded-bl-md bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="text-[11px] font-medium text-emerald-300/90 tracking-wide">ABOS</span>
+                    <span className="flex items-center gap-1" aria-label="ABOS is typing">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:-0.2s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:-0.1s]" />
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" />
@@ -475,7 +471,6 @@ function formatTime(value: string) {
 
 const AGENT_ROLE_MESSAGE = 'Your role cannot use the AI agent. Ask the business owner to change your access.';
 
-// Turns agent and database errors into short, readable messages (no raw JSON or status codes).
 async function describeAgentError(error: unknown): Promise<string> {
   const context = (error as { context?: unknown } | null)?.context as Response | undefined;
   if (context && typeof context.status === 'number' && typeof context.clone === 'function') {
