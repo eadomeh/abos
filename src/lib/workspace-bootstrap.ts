@@ -110,7 +110,8 @@ async function loadLegacySnapshot({ businessId, now, dayStart, thirtyDaysAgo, se
 }
 
 export async function fetchWorkspaceBootstrap(args: BootstrapArgs): Promise<DashboardSnapshot> {
-  const rpc = supabase.rpc as unknown as (
+  // Bind so the Supabase client remains `this` when rpc is invoked detached.
+  const rpc = supabase.rpc.bind(supabase) as unknown as (
     name: string,
     params: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: RpcError | null }>;
