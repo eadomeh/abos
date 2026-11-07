@@ -208,7 +208,7 @@ export default function AgentPage() {
         throw new Error(result?.detail ?? result?.error ?? 'ABOS AI failed.');
       }
 
-      const answer = String(result.answer ?? '').trim() || 'I’m ready. What do you need?';
+      const answer = String(result.answer ?? '').trim() || "I'm ready. What do you need?";
 
       const { data: assistantMessage, error: assistantError } = await supabase
         .from('messages')
@@ -235,31 +235,25 @@ export default function AgentPage() {
 
       setMessages((current) => [...current, assistantMessage as Message]);
 
-      // Understanding is persisted by the Edge Function in a background task.
-      // Poll briefly so Live Understanding does not race that persistence.
-      let persistedState = null;
+      // Show analysis immediately from the function response so the UI does not
+      // wait on a multi-second poll loop after the answer is already on screen.
+      setAnalysis((result.analysis ?? null) as AnalysisState | null);
+      setSending(false);
 
-      for (let attempt = 0; attempt < 6; attempt += 1) {
+      // Optional single refresh: Edge Function may persist a richer state shortly after.
+      const refreshBusinessId = activeBusiness.id;
+      const refreshConversationId = activeConversationId;
+      void (async () => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
         const { data } = await supabase
           .from('conversation_ai_state')
           .select('*')
-          .eq('business_id', activeBusiness.id)
-          .eq('conversation_id', activeConversationId)
+          .eq('business_id', refreshBusinessId)
+          .eq('conversation_id', refreshConversationId)
           .maybeSingle();
-
-        if (data) {
-          persistedState = data;
-          break;
-        }
-
-        if (attempt < 5) {
-          await new Promise((resolve) => setTimeout(resolve, 400));
-        }
-      }
-
-      setAnalysis(
-        (persistedState ?? result.analysis ?? null) as AnalysisState | null,
-      );
+        if (data) setAnalysis(data as AnalysisState);
+      })();
+      return;
     } catch (sendError) {
       setError(await describeAgentError(sendError));
     } finally {
@@ -331,13 +325,14 @@ export default function AgentPage() {
                 </div>
               ) : (
                 messages.map((message) => {
-                  const outgoing = message.direction === 'outgoing';
+                  // Owner workspace: ABOS (assistant) on the left, operator on the right.
+                  const isAssistant = message.direction === 'outgoing';
                   return (
-                    <div key={message.id} className={outgoing ? 'flex justify-end' : 'flex justify-start'}>
-                      <div className="max-w-[88%] md:max-w-[78%] flex flex-col">
-                        <div className={outgoing
-                          ? 'px-4 py-3 rounded-2xl rounded-br-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white'
-                          : 'px-4 py-3 rounded-2xl rounded-bl-md bg-white/[0.04] border border-white/[0.07] text-slate-200'}>
+                    <div key={message.id} className={isAssistant ? 'flex justify-start' : 'flex justify-end'}>
+                      <div className={`max-w-[88%] md:max-w-[78%] flex flex-col ${isAssistant ? '' : 'items-end'}`}>
+                        <div className={isAssistant
+                          ? 'px-4 py-3 rounded-2xl rounded-bl-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white'
+                          : 'px-4 py-3 rounded-2xl rounded-br-md bg-white/[0.04] border border-white/[0.07] text-slate-200'}>
                           <p className="text-sm leading-6 whitespace-pre-wrap break-words">{message.content}</p>
                         </div>
                         <span className="text-[10px] text-slate-700 mt-1 px-1">{formatTime(message.created_at)}</span>
@@ -389,7 +384,7 @@ export default function AgentPage() {
                     }
                   }}
                   rows={1}
-                  placeholder="Talk to ABOS…"
+                  placeholder="Talk to ABOS..."
                   className="flex-1 resize-none min-h-[46px] max-h-32 px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50"
                 />
                 <button type="submit" disabled={!draft.trim() || sending} className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed">
@@ -471,7 +466,7 @@ function InsightRow({
 }
 
 function formatValue(value: string | null | undefined) {
-  return value ? value.replace(/_/g, ' ') : '—';
+  return value ? value.replace(/_/g, ' ') : '\u2014';
 }
 
 function formatTime(value: string) {
