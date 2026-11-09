@@ -89,9 +89,16 @@ export function MapFlights({ reduced = false }: { reduced?: boolean }) {
     }
 
     let raf = 0;
-    const started = performance.now();
+    let running = false;
+    let visible = true;
+    let elapsedMs = 0;
+    let lastNow = 0;
+
     const tick = (now: number) => {
-      const elapsed = now - started;
+      if (!running) return;
+      if (lastNow !== 0) elapsedMs += now - lastNow;
+      lastNow = now;
+      const elapsed = elapsedMs;
       paths.forEach((row, index) => {
         const cycle = row.flight.duration * 1000;
         const local = elapsed - row.flight.delay * 1000;
@@ -103,9 +110,45 @@ export function MapFlights({ reduced = false }: { reduced?: boolean }) {
       });
       raf = window.requestAnimationFrame(tick);
     };
-    raf = window.requestAnimationFrame(tick);
+
+    const stop = () => {
+      running = false;
+      lastNow = 0;
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const start = () => {
+      if (running || !visible || document.visibilityState === "hidden") return;
+      running = true;
+      lastNow = 0;
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver === "undefined") {
+      visible = true;
+    } else {
+      visible = false;
+      observer = new IntersectionObserver((entries) => {
+        visible = entries.some((entry) => entry.isIntersecting);
+        if (visible) start();
+        else stop();
+      }, { threshold: 0.05 });
+      observer.observe(container);
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") stop();
+      else start();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    start();
+
     return () => {
-      window.cancelAnimationFrame(raf);
+      stop();
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateSize);
     };

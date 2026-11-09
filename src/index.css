@@ -223,6 +223,14 @@ body::before {
   background-size: 180px 180px;
 }
 
+@media (max-width: 767px) {
+  body::before {
+    content: none;
+    display: none;
+    background-image: none;
+  }
+}
+
 .typing-dot {
   animation: typing-pulse 1.05s ease-in-out infinite;
 }
@@ -545,9 +553,7 @@ body::before {
   .live-marquee,
   .live-ping,
   .split-out,
-  .split-in,
-  .continent-fallback-spin,
-  .continent-scan {
+  .split-in {
     animation: none;
   }
 }
@@ -570,173 +576,6 @@ body::before {
   55%, 95% { opacity: 1; }
   100% { opacity: 0; }
 }
-
-.continent-stage {
-  position: relative;
-  height: 22rem;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background:
-    radial-gradient(ellipse at 50% 68%, rgb(37 211 102 / 0.16), transparent 52%),
-    radial-gradient(ellipse at 78% 18%, rgb(139 47 240 / 0.12), transparent 42%),
-    #08080d;
-  box-shadow: 0 0 0 1px rgb(246 243 236 / 0.08);
-  touch-action: pan-y;
-  isolation: isolate;
-}
-
-@media (min-width: 768px) {
-  .continent-stage {
-    height: 34rem;
-  }
-}
-
-.continent-canvas,
-.continent-fallback {
-  position: absolute;
-  inset: 0;
-}
-
-.continent-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: pan-y;
-  cursor: grab;
-}
-
-.continent-canvas:active {
-  cursor: grabbing;
-}
-
-.continent-fallback {
-  padding: 1.5rem 2rem 3.5rem;
-  transform: perspective(900px) rotateX(18deg) rotateY(-12deg);
-  transform-origin: center 60%;
-}
-
-.continent-fallback-spin {
-  animation: continent-tilt 14s ease-in-out infinite;
-}
-
-@keyframes continent-tilt {
-  0%,
-  100% {
-    transform: perspective(900px) rotateX(18deg) rotateY(-14deg);
-  }
-  50% {
-    transform: perspective(900px) rotateX(12deg) rotateY(12deg);
-  }
-}
-
-.continent-corner {
-  pointer-events: none;
-  position: absolute;
-  z-index: 2;
-  width: 18px;
-  height: 18px;
-  border-color: rgb(37 211 102 / 0.7);
-  border-style: solid;
-}
-
-.continent-corner-tl {
-  top: 12px;
-  left: 12px;
-  border-width: 1.5px 0 0 1.5px;
-}
-
-.continent-corner-tr {
-  top: 12px;
-  right: 12px;
-  border-width: 1.5px 1.5px 0 0;
-}
-
-.continent-corner-bl {
-  bottom: 12px;
-  left: 12px;
-  border-width: 0 0 1.5px 1.5px;
-}
-
-.continent-corner-br {
-  bottom: 12px;
-  right: 12px;
-  border-width: 0 1.5px 1.5px 0;
-}
-
-.continent-scan {
-  pointer-events: none;
-  position: absolute;
-  inset-inline: 8%;
-  height: 18%;
-  z-index: 1;
-  background-image: linear-gradient(
-    180deg,
-    transparent,
-    rgb(37 211 102 / 0.14),
-    transparent
-  );
-  animation: continent-scan 7s ease-in-out infinite;
-}
-
-@keyframes continent-scan {
-  0% {
-    top: 8%;
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  88% {
-    opacity: 1;
-  }
-  100% {
-    top: 78%;
-    opacity: 0;
-  }
-}
-
-.continent-chip {
-  position: absolute;
-  z-index: 3;
-  right: 1rem;
-  bottom: 3.15rem;
-  left: 1rem;
-  width: auto;
-  border-radius: var(--radius-md);
-  background: rgb(21 21 31 / 0.88);
-  padding: 0.75rem 0.85rem;
-  box-shadow: 0 0 0 1px rgb(246 243 236 / 0.1);
-  backdrop-filter: blur(12px);
-}
-
-@media (min-width: 768px) {
-  .continent-chip {
-    top: 1.5rem;
-    right: 1.5rem;
-    bottom: auto;
-    left: auto;
-    width: 20rem;
-  }
-}
-
-.continent-hint {
-  pointer-events: none;
-  position: absolute;
-  z-index: 3;
-  bottom: 1rem;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  translate: -50% 0;
-  border-radius: 999px;
-  background: rgb(10 10 15 / 0.7);
-  padding: 0.4rem 0.75rem;
-  font-size: 0.75rem;
-  color: var(--color-harmattan-muted);
-  box-shadow: 0 0 0 1px rgb(246 243 236 / 0.08);
-}
-
 
 .abos-wa3d-bezel {
   position: relative;

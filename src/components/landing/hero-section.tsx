@@ -26,7 +26,7 @@ export function HeroSection() {
           layer for growing African businesses.
         </p>
 
-        <div className="hero-intro hero-intro-4 mx-auto mt-9 mb-20 flex w-full max-w-md flex-col gap-3 sm:mb-0 sm:max-w-none sm:flex-row sm:justify-center">
+        <div className="hero-intro hero-intro-4 mx-auto mt-9 mb-0 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
           <Button
             type="button"
             size="lg"
@@ -46,7 +46,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="hero-intro hero-intro-5 hero-stage mt-14 sm:mt-20">
+      <div className="hero-intro hero-intro-5 hero-stage mt-8 sm:mt-20">
         <WhatsappThread />
       </div>
 

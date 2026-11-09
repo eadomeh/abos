@@ -66,24 +66,23 @@ export function AskAbos() {
         {open ? (
           <section
             className="chat-panel flex h-[min(30rem,calc(100svh-9.5rem))] w-full flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-charcoal/95 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md"
-            aria-label="ABOS live agent"
+            aria-label="Scripted ABOS website guide"
           >
             <header className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="relative grid size-10 place-items-center rounded-full bg-signal/15 text-signal">
                   <MessageCircle className="size-4" />
-                  <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-signal ring-2 ring-charcoal" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-harmattan">ABOS guide</p>
-                  <p className="text-xs text-signal">Website help · About ABOS</p>
+                  <p className="text-xs text-harmattan-muted">Scripted website guide. Not live support.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="grid size-10 place-items-center rounded-full text-quiet hover:bg-white/5 hover:text-harmattan"
-                aria-label="Close live chat"
+                aria-label="Close ABOS guide"
               >
                 <X className="size-4" />
               </button>
@@ -129,11 +128,16 @@ export function AskAbos() {
             </div>
 
             <form onSubmit={onSubmit} className="flex items-center gap-2 border-t border-white/8 p-3">
+              <label htmlFor="ask-abos-guide" className="sr-only">
+                Ask the ABOS website guide
+              </label>
               <input
+                id="ask-abos-guide"
                 ref={field}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about ABOS or signing in"
+                aria-label="Ask the ABOS website guide"
                 className="h-11 flex-1 rounded-full bg-onyx px-4 text-sm text-harmattan outline-none ring-1 ring-white/10 placeholder:text-quiet focus:ring-signal/40"
               />
               <button
@@ -150,7 +154,7 @@ export function AskAbos() {
 
         <button
           type="button"
-          aria-label={open ? "Close ABOS agent" : "Open ABOS agent"}
+          aria-label={open ? "Close ABOS guide" : "Open ABOS guide"}
           onClick={() => setOpen((v) => !v)}
           className="ask-fab relative grid size-14 place-items-center rounded-full text-onyx sm:size-16"
         >

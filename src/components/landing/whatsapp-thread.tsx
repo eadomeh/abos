@@ -232,7 +232,7 @@ export function WhatsappThread() {
                       <p
                         className={cn(
                           "mt-1 flex items-center justify-end gap-1 text-xs",
-                          message.side === "abos" ? "text-signal/70" : "text-wa-meta",
+                          message.side === "abos" ? "text-signal" : "text-wa-meta",
                         )}
                       >
                         {message.time}
