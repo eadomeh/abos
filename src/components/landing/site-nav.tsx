@@ -18,7 +18,7 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-onyx/95 backdrop-blur-md">
+    <header className="site-nav sticky top-0 z-50">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:bg-signal focus:px-3 focus:py-2 focus:text-onyx"

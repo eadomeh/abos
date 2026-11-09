@@ -18,7 +18,7 @@ export function HeroSection() {
 
         <h1 className="font-display text-display font-semibold tracking-[-0.055em] text-harmattan">
           Run the business from
-          <span className="mt-1 block text-signal">one intelligent system.</span>
+          <span className="hero-signal-line mt-1 block">one intelligent system.</span>
         </h1>
 
         <p className="hero-intro hero-intro-3 mx-auto mt-7 max-w-2xl font-sans text-lede text-harmattan-muted">
@@ -46,7 +46,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className="hero-intro hero-intro-5 mt-14 sm:mt-20">
+      <div className="hero-intro hero-intro-5 hero-stage mt-14 sm:mt-20">
         <WhatsappThread />
       </div>
 
