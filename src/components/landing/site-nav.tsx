@@ -32,9 +32,7 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
           aria-label="Go to ABOS home"
           className="flex min-w-0 items-center gap-2.5 rounded-xl sm:gap-3"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-signal/20 bg-signal/10">
-            <AbosMark className="size-6" glow />
-          </span>
+          <AbosMark className="size-10" />
           <span className="min-w-0 text-left">
             <span className="block font-display text-sm font-semibold tracking-[0.24em] text-harmattan">ABOS</span>
             <span className="hidden truncate text-[10px] uppercase tracking-[0.16em] text-quiet sm:block">

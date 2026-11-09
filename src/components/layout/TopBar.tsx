@@ -87,9 +87,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
             onClick={() => setBizDropdown(!bizDropdown)}
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg glass glass-hover transition-all"
           >
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center flex-shrink-0">
-              <AbosMark className="w-5 h-5" glow />
-            </div>
+            <AbosMark className="h-7 w-7" />
             <div className="text-left hidden sm:block">
               <p className="text-sm font-medium text-white leading-tight max-w-[140px] truncate">
                 {activeBusiness?.name ?? 'No Business'}
@@ -113,9 +111,7 @@ export default function TopBar({ onToggleSidebar, onOpenMobileMenu, onOpenOnboar
                     onClick={() => { switchBusiness(biz.id); setBizDropdown(false); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-all text-left"
                   >
-                    <div className="w-6 h-6 rounded-md bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                      <AbosMark className="w-4 h-4" />
-                    </div>
+                    <AbosMark className="h-6 w-6" />
                     <span className="text-sm text-slate-300 flex-1 truncate">{biz.name}</span>
                     {activeBusiness?.id === biz.id && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>

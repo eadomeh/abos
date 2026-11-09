@@ -12,7 +12,16 @@ function FlightBubble({ flight }: { flight: MapFlight }) {
       "flex max-w-[9.25rem] items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9)] ring-1 sm:max-w-[12rem]",
       abos ? "bg-wa-out ring-signal/30" : "bg-charcoal/95 ring-white/14 backdrop-blur-sm",
     )}>
-      <img src={flight.avatar} alt="" width={20} height={20} className="size-5 shrink-0 rounded-full object-cover ring-1 ring-white/20" />
+      <img
+        src={flight.avatar}
+        alt=""
+        width={20}
+        height={20}
+        className={cn(
+          "size-5 shrink-0",
+          abos ? "object-contain" : "rounded-full object-cover ring-1 ring-white/20",
+        )}
+      />
       <p className="truncate text-[10px] leading-none text-wa-text sm:text-[11px]">{flight.text}</p>
     </div>
   );

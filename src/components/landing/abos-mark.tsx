@@ -7,20 +7,25 @@ type Props = {
   glow?: boolean;
 };
 
-/** Official ABOS mark — refined hexagonal crystal from the operating-layer identity. */
+/** Approved ABOS emblem. The file is the supplied artwork, shown as-is: no frame, crop, or redraw. */
 export function AbosMark({ className, title = "ABOS", glow = false }: Props) {
   return (
     <img
-      src="/abos-mark.svg"
+      src="/abos-mark.png"
       alt={title}
-      width={32}
-      height={32}
-      className={cn("shrink-0", glow && "drop-shadow-[0_0_18px_rgba(110,231,183,0.45)]", className)}
+      width={1024}
+      height={1024}
+      draggable={false}
+      className={cn(
+        "shrink-0 object-contain object-center",
+        glow && "drop-shadow-[0_0_18px_rgba(110,231,183,0.35)]",
+        className,
+      )}
     />
   );
 }
 
-/** Pure inline vector of the Refined Hexagonal Crystal with collision-proof SVG gradient IDs. */
+/** Legacy inline crystal. Not the brand mark. No current screen imports this. */
 export function AbosMarkVector({ className, title = "ABOS", glow = false }: Props) {
   const rawId = useId();
   const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
