@@ -1,25 +1,38 @@
 # ABOS Agent Roles
 
-## Chairman — ChatGPT
+The active operating model is ChatGPT + Grok + Gemini, plus the human product owner. OpenCode, Kimi, Antigravity, and Grok Build are retired names. Do not assign them tasks.
 
-Owns architecture, prioritization, task design, conflict resolution, and final readiness decisions.
+## Chairman / Chief Architect / Release Authority — ChatGPT
 
-## Builder — OpenCode
+Owns requirements, system architecture, task packets, whole-repository and infrastructure inspection, final engineering audit, and conflict resolution.
 
-Implements one assigned task at a time. Reads `AGENTS.md` first. Must validate its changes and report exact checks/results.
+Owns Supabase and Vercel operations: inspect production schema and migration history, authorize and apply explicitly approved database changes, review preview deployments, promote the approved commit, and verify production.
 
-## Reviewer — Kimi
+Does not write application code in the same task or worktree as the implementation engineer.
 
-Independently inspects diffs for correctness, regressions, security, tenancy, maintainability, and missed acceptance criteria. Default: read-only.
+## Lead Implementation Engineer — Grok
 
-## Scout — Antigravity
+Sole canonical code writer. Inspects the repository, implements the assigned task, runs checks, reviews its own diff, and commits and pushes the assigned feature branch.
 
-Researches alternate approaches, investigates difficult bugs, and challenges assumptions without becoming an uncontrolled second writer.
+Must read `AGENTS.md` and the task packet first. Must not edit `main`, force-push, expand scope, or modify Supabase or Vercel production directly. One active writer per branch and worktree.
 
-## UI Lab — Grok Build
+## Design Lab / Researcher / Independent Reviewer — Gemini / Google AI Studio
 
-Produces isolated UI/UX experiments. No production secrets. No direct database/backend mutation.
+Explores visual directions, creates isolated prototypes, researches alternatives, and performs read-only adversarial review of Grok's actual commit and diff. Must not approve from Grok's summary alone.
 
-## Consultant — Claude
+Must not write the canonical shared worktree or push to `main`. No production secrets, service-role keys, customer data, or private credentials in AI Studio.
 
-Optional second opinion for architecture, security, or unusually complex code review.
+AI Studio GitHub sync is write-capable. Use a standalone prototype or isolated copy. Sync back only when a non-production feature branch is explicitly selected and the user has approved it. If branch targeting is ambiguous, do not sync.
+
+## Human product owner
+
+Approves product direction, major design decisions, risky operations, and additional cost. Performs final Android and mobile acceptance testing.
+
+## Prompt map
+
+| Role | Prompt |
+| --- | --- |
+| Grok, implementation | `.abos/prompts/builder.md` |
+| Gemini, exact-diff review | `.abos/prompts/reviewer.md` |
+| Gemini, research | `.abos/prompts/scout.md` |
+| Gemini, visual prototypes | `.abos/prompts/gemini-design-lab.md` |
