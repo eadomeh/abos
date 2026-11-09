@@ -17,6 +17,12 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
     setMenuOpen(false);
   };
 
+  const signIn = () => {
+    setMenuOpen(false);
+    if (onLogin) onLogin();
+    else openAuth("signin");
+  };
+
   return (
     <header className="site-nav sticky top-0 z-50">
       <a
@@ -25,16 +31,18 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
       >
         Skip to content
       </a>
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-8">
         <button
           type="button"
           onClick={() => go("main")}
           aria-label="Go to ABOS home"
-          className="flex min-w-0 items-center gap-2.5 rounded-xl sm:gap-3"
+          className="flex min-w-0 items-center gap-2 rounded-xl sm:gap-3"
         >
-          <AbosMark className="h-14 w-auto sm:h-[60px]" />
+          <AbosMark className="h-12 w-auto sm:h-14 md:h-[60px]" />
           <span className="min-w-0 text-left">
-            <span className="block font-display text-sm font-semibold tracking-[0.24em] text-harmattan">ABOS</span>
+            <span className="block font-display text-[13px] font-semibold tracking-[0.16em] text-harmattan sm:text-sm sm:tracking-[0.24em]">
+              ABOS
+            </span>
             <span className="hidden truncate text-[10px] uppercase tracking-[0.16em] text-quiet sm:block">
               AI Business Operating System
             </span>
@@ -53,23 +61,24 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
           </button>
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button
             type="button"
-            onClick={() => (onLogin ? onLogin() : openAuth("signin"))}
-            className="rounded-xl px-2 py-2.5 text-xs text-quiet transition-colors duration-150 hover:text-harmattan sm:px-3"
+            onClick={signIn}
+            className="hidden rounded-xl px-3 py-2.5 text-xs text-quiet transition-colors duration-150 hover:text-harmattan md:inline-flex"
           >
             Log in
           </button>
-          <Button type="button" size="md" className="h-10 rounded-2xl px-4 text-xs" onClick={() => openAuth("signup")}>
+          <Button type="button" size="md" className="h-10 rounded-2xl px-3 text-[11px] sm:px-4 sm:text-xs" onClick={() => openAuth("signup")}>
             Get started
-            <ArrowRight className="ml-2 size-3.5" />
+            <ArrowRight className="ml-1.5 size-3.5 sm:ml-2" />
           </Button>
           <button
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] md:hidden"
             aria-label="Toggle navigation"
+            aria-expanded={menuOpen}
           >
             {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
@@ -90,11 +99,18 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
             </button>
             <button
               type="button"
+              onClick={signIn}
+              className="mt-2 rounded-xl border border-white/10 px-3 py-3 text-left text-sm text-harmattan"
+            >
+              Log in
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setMenuOpen(false);
                 openAuth("signup");
               }}
-              className="mt-2 rounded-xl border border-white/10 px-3 py-3 text-left text-sm text-harmattan"
+              className="rounded-xl px-3 py-3 text-left text-sm text-harmattan-muted hover:bg-white/[0.03] hover:text-harmattan"
             >
               Enter ABOS
             </button>
