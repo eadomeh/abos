@@ -918,3 +918,89 @@ html.abos-gsap .hero-intro {
     -webkit-text-fill-color: #6ee7b7;
   }
 }
+
+/* === ABOS CINEMATIC SHOWCASE === */
+.cine-stage {
+  contain: layout paint;
+}
+
+.cine-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle at 50% 46%, #000 20%, transparent 78%);
+}
+
+.cine-glow {
+  background:
+    radial-gradient(closest-side at 50% 42%, rgb(110 231 183 / 0.16), transparent 72%),
+    radial-gradient(closest-side at 78% 18%, rgb(167 139 250 / 0.14), transparent 70%),
+    radial-gradient(closest-side at 18% 80%, rgb(16 185 129 / 0.08), transparent 72%);
+}
+
+.cine-halo {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: min(46vw, 280px);
+  height: min(46vw, 280px);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(110 231 183 / 0.28), rgb(110 231 183 / 0) 68%);
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .cine-halo {
+    top: 44%;
+    width: 340px;
+    height: 340px;
+  }
+}
+
+.cine-sweep {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: -30%;
+  width: 22%;
+  background: linear-gradient(90deg, transparent, rgb(110 231 183 / 0.18), transparent);
+  pointer-events: none;
+}
+
+.cine-glass {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 16px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: linear-gradient(180deg, rgb(8 16 20 / 0.88), rgb(8 16 20 / 0.72));
+  box-shadow:
+    0 18px 40px -28px rgb(0 0 0 / 0.85),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  padding: 12px 14px;
+}
+
+.cine-glass.cine-inline {
+  position: relative;
+}
+
+.cine-node {
+  position: absolute;
+  z-index: 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #6ee7b7;
+  box-shadow: 0 0 0 4px rgb(110 231 183 / 0.12);
+}
+
+.cine-path,
+.cine-link {
+  position: absolute;
+  z-index: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(110 231 183 / 0.75), rgb(167 139 250 / 0.45));
+  pointer-events: none;
+}

@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
 import { AskAbos } from "@/components/landing/ask-abos";
 import { AuthUiProvider } from "@/components/landing/auth-modal";
+import { CinematicShowcase } from "@/components/landing/cinematic-showcase";
 import { ConversationsSection } from "@/components/landing/conversations-section";
+import { CtaSection } from "@/components/landing/cta-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 import { HeroSection } from "@/components/landing/hero-section";
 import { LiveRail } from "@/components/landing/live-rail";
@@ -9,10 +11,11 @@ import { NetworkSection } from "@/components/landing/network-section";
 import { ProblemSection } from "@/components/landing/problem-section";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteNav } from "@/components/landing/site-nav";
-import { useScrollDepth, useScrollReveal } from "@/lib/hooks";
-import { useLandingStage } from "@/lib/landing-stage";
 import { ThinkSection } from "@/components/landing/think-section";
 import { VisionSection } from "@/components/landing/vision-section";
+import { WhatsappSection } from "@/components/landing/whatsapp-section";
+import { useScrollDepth, useScrollReveal } from "@/lib/hooks";
+import { useLandingStage } from "@/lib/landing-stage";
 
 interface LandingPageProps {
   onGetStarted?: () => void;
@@ -40,6 +43,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
           <main>
             <HeroSection />
+            <CinematicShowcase />
+            <WhatsappSection />
             <LiveRail />
             <FeaturesSection />
             <NetworkSection />
@@ -47,6 +52,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
             <ThinkSection />
             <ProblemSection />
             <VisionSection />
+            <CtaSection />
           </main>
 
           <SiteFooter />
