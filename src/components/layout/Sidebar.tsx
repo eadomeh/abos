@@ -43,7 +43,7 @@ export default function Sidebar({
       <aside className={`${mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex w-[18rem] max-w-[88vw] min-h-0' : 'hidden md:flex'} ${collapsed ? 'md:w-16' : 'md:w-60'} flex-shrink-0 abos-bg border-r border-white/[0.06] flex-col transition-all duration-300`}>
         <div className="h-16 flex items-center justify-between px-3 border-b border-white/[0.06]">
           <div className="flex items-center min-w-0">
-            <AbosMark className="h-9 w-9" />
+            <AbosMark className="h-8 w-auto max-w-full" />
             {!collapsed && <span className="ml-2.5 text-lg font-bold text-white tracking-tight">ABOS</span>}
           </div>
           <button type="button" onClick={onCloseMobile} aria-label="Close navigation" className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05]">

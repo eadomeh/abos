@@ -13,8 +13,8 @@ export function AbosMark({ className, title = "ABOS", glow = false }: Props) {
     <img
       src="/abos-mark.png"
       alt={title}
-      width={1024}
-      height={1024}
+      width={806}
+      height={630}
       draggable={false}
       className={cn(
         "shrink-0 object-contain object-center",

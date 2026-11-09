@@ -58,7 +58,7 @@ function AppContent() {
     return (
       <div className="min-h-screen abos-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <AbosMark className="h-12 w-12" glow />
+          <AbosMark className="h-16 w-auto" />
           <div className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
         </div>
       </div>
