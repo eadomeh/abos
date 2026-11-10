@@ -121,7 +121,7 @@ export default function TasksPage() {
       {error && <div className="mb-5 text-sm text-red-300 bg-red-500/5 border border-red-500/20 rounded-xl p-3">{error}</div>}
       <div className="glass rounded-2xl overflow-hidden">
         {loading ? <div className="py-20 text-center text-sm text-slate-600">Loading tasks…</div> :
-        tasks.length === 0 ? <div className="py-20 text-center"><Zap className="w-8 h-8 text-slate-700 mx-auto mb-3" /><p className="text-sm text-slate-500">No tasks yet.</p><p className="text-xs text-slate-700 mt-1">Create follow-ups now; later the automation engine will be able to create them automatically.</p></div> :
+        tasks.length === 0 ? <div className="py-20 text-center"><Zap className="w-8 h-8 text-slate-700 mx-auto mb-3" /><p className="text-sm text-slate-500">No tasks yet.</p><p className="text-xs text-slate-700 mt-1">{writable ? 'Create follow-ups now; later the automation engine will be able to create them automatically.' : 'Tasks created by the team will appear here. This role is read-only.'}</p></div> :
         <div className="divide-y divide-white/[0.05]">
           {tasks.map((task) => (
             <div key={task.id} className={`p-4 md:p-5 flex gap-3 items-start ${task.status === 'done' ? 'opacity-60' : ''}`}>
