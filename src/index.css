@@ -936,6 +936,20 @@ body::before {
   to { opacity: 1; }
 }
 
+.wa-thread-active {
+  box-shadow: 0 0 0 1px rgb(110 231 183 / 0.38);
+}
+
+.wa-playback-paused .typing-dot {
+  animation-play-state: paused;
+}
+
+@media (max-width: 1023px) {
+  .abos-wa3d-stage {
+    overflow: hidden;
+  }
+}
+
 
 /* === ABOS LANDING REDESIGN === */
 .site-nav {
