@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AfricaMap } from "@/components/landing/africa-map";
 import { AgentConsole } from "@/components/landing/agent-console";
 import { MAP_CITIES } from "@/components/landing/map-data";
@@ -7,15 +7,36 @@ import { cn } from "@/lib/utils";
 
 export function NetworkSection() {
   const reduced = usePrefersReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
   const [pinned, setPinned] = useState(false);
+  const [awake, setAwake] = useState(true);
   const city = MAP_CITIES[active] ?? MAP_CITIES[0]!;
 
   useEffect(() => {
-    if (reduced || pinned) return;
+    const node = sectionRef.current;
+    if (!node || !("IntersectionObserver" in window)) return;
+
+    let onScreen = false;
+    const sync = () => setAwake(onScreen && document.visibilityState !== "hidden");
+    const observer = new IntersectionObserver(([entry]) => {
+      onScreen = Boolean(entry?.isIntersecting);
+      sync();
+    }, { threshold: 0.05 });
+
+    observer.observe(node);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduced || pinned || !awake) return;
     const id = window.setInterval(() => setActive((i) => (i + 1) % MAP_CITIES.length), 4200);
     return () => window.clearInterval(id);
-  }, [reduced, pinned]);
+  }, [reduced, pinned, awake]);
 
   function select(index: number) {
     setActive(index);
@@ -23,7 +44,7 @@ export function NetworkSection() {
   }
 
   return (
-    <section id="network" className="scroll-mt-20 border-y border-white/[0.06] py-24 sm:py-32">
+    <section ref={sectionRef} id="network" className="scroll-mt-20 border-y border-white/[0.06] py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="max-w-3xl" data-scroll-reveal>
           <p className="text-xs uppercase tracking-widest text-signal/80">The African operating network</p>
@@ -37,36 +58,45 @@ export function NetworkSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" data-scroll-reveal>
+        <div className="mt-14 grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-10" data-scroll-reveal>
           <AfricaMap reduced={reduced} activeIndex={active} pinned={pinned} onSelect={select} />
 
-          <div className="space-y-4">
-            <div className="rounded-[1.6rem] border border-white/10 bg-charcoal p-5 sm:p-6" data-scroll-reveal-item="01">
-              <p className="text-xs uppercase tracking-widest text-quiet">City spotlight</p>
-              <p className="mt-2 font-display text-2xl font-semibold text-harmattan">
+          <div className="min-w-0 space-y-4">
+            <div className="rounded-[1.6rem] border border-emerald-300/15 bg-charcoal p-5 shadow-[0_24px_60px_-36px_rgba(16,185,129,0.45)] sm:p-6" data-scroll-reveal-item="01">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs uppercase tracking-widest text-quiet">Selected city</p>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-signal/80">Illustrative sample</p>
+              </div>
+              <p className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-harmattan">
                 {city.name}
                 <span className="text-quiet"> · {city.country}</span>
               </p>
-              <div className="mt-3 flex items-center gap-3">
-                <img
-                  src={city.avatar}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="size-10 rounded-full object-cover ring-1 ring-white/10"
-                />
-                <div>
-                  <p className="text-sm text-signal">{city.person} · sample reply</p>
-                  <p className="text-sm leading-6 text-harmattan-muted">{city.snippet}</p>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex items-start gap-3">
+                  <img
+                    src={city.avatar}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="size-10 rounded-full object-cover ring-1 ring-white/10"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm text-signal">{city.person}</p>
+                    <p className="mt-1 text-sm leading-6 text-harmattan-muted">{city.snippet}</p>
+                  </div>
                 </div>
               </div>
+              <p className="mt-3 text-xs leading-5 text-quiet">
+                Routes drawn from this city are emphasized on the map. This is not live network coverage.
+              </p>
             </div>
 
-            <div className="hidden space-y-2 md:block">
+            <div className="space-y-2">
               {city.threads.slice(1).map((thread, index) => (
                 <div
                   key={`${city.id}-${thread.person}`}
-                  className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3" data-scroll-reveal-item={String(index + 2).padStart(2, "0")}
+                  className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3"
+                  data-scroll-reveal-item={String(index + 2).padStart(2, "0")}
                 >
                   <img
                     src={thread.avatar}
@@ -85,22 +115,26 @@ export function NetworkSection() {
 
             <AgentConsole />
 
-            <div className="flex flex-wrap gap-2">
-              {MAP_CITIES.map((c, i) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => select(i)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs transition-[background-color,border-color,color] duration-150",
-                    i === active
-                      ? "border-signal/40 bg-signal/10 text-signal"
-                      : "border-white/10 bg-white/[0.03] text-quiet hover:text-harmattan",
-                  )}
-                >
-                  {c.name}
-                </button>
-              ))}
+            <div>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-quiet">Choose a city</p>
+              <div className="flex flex-wrap gap-2">
+                {MAP_CITIES.map((c, i) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => select(i)}
+                    aria-pressed={i === active}
+                    className={cn(
+                      "min-h-11 rounded-full border px-3.5 py-2 text-xs transition-[background-color,border-color,color] duration-150",
+                      i === active
+                        ? "border-signal/40 bg-signal/10 text-signal"
+                        : "border-white/10 bg-white/[0.03] text-quiet hover:text-harmattan",
+                    )}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

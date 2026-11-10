@@ -547,6 +547,8 @@ body::before {
   .map-radar,
   .map-scan,
   .map-chip,
+  .map-orbit,
+  .map-legend-ping,
   .inbox-slide-in,
   .inbox-list-in,
   .card-float,
@@ -704,7 +706,10 @@ body::before {
 }
 
 .map-feature-chip {
-  transition: opacity 320ms ease-out;
+  transition:
+    opacity 320ms ease-out,
+    left 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .map-stage:not(.map-network-ready) .map-feature-chip {
@@ -736,6 +741,67 @@ body::before {
 
   .map-stage:not(.map-network-ready) .map-scan {
     opacity: 0;
+  }
+}
+
+.map-orbit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: map-orbit 14s linear infinite;
+}
+
+@keyframes map-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.map-city-label {
+  font-family: inherit;
+  letter-spacing: 0.04em;
+}
+
+.map-arc-live {
+  animation-duration: 3.6s;
+}
+
+.map-stage.map-idle:not(.map-live) {
+  animation-play-state: paused;
+}
+
+.map-stage:not(.map-live) .map-marker-pulse,
+.map-stage:not(.map-live) .map-arc,
+.map-stage:not(.map-live) .map-radar,
+.map-stage:not(.map-live) .map-scan,
+.map-stage:not(.map-live) .map-orbit,
+.map-stage:not(.map-live) .map-legend-ping {
+  animation-play-state: paused;
+}
+
+.map-legend-ping {
+  animation: map-marker 2.4s ease-in-out infinite;
+}
+
+.africa-map-halo {
+  opacity: 0;
+  transition: opacity 700ms ease-out;
+}
+
+.map-stage.map-entered .africa-map-halo {
+  opacity: 1;
+  transition-delay: 900ms;
+}
+
+@media (max-width: 767px) {
+  .map-city-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .africa-map-halo {
+    opacity: 1;
+    transition: none;
   }
 }
 
