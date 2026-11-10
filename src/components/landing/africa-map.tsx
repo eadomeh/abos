@@ -387,7 +387,7 @@ export function AfricaMap({ reduced = false, activeIndex, pinned = false, onSele
           })}
         </svg>
 
-        {networkReady ? <MapFlights reduced={reduced || !motionOn} /> : null}
+        {networkReady ? <MapFlights reduced={reduced} /> : null}
 
         <div className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full bg-onyx/80 px-2.5 py-1 ring-1 ring-white/10">
           <span className={cn("size-1.5 rounded-full bg-signal", motionOn && "map-legend-ping")} />

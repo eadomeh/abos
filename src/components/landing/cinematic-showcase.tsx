@@ -161,7 +161,10 @@ export function CinematicShowcase() {
       });
 
       const mark = (id: string, on: boolean) => {
-        cursorTarget(id)?.toggleAttribute("data-hot", on);
+        const target = cursorTarget(id);
+        if (!target) return;
+        if (on) target.setAttribute("data-hot", "true");
+        else target.removeAttribute("data-hot");
       };
 
       const travel = (id: string, at: number, duration = 0.28) => {
