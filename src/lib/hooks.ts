@@ -45,12 +45,10 @@ export function useScrollReveal() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add("scroll-reveal-visible");
-          observer.unobserve(entry.target);
+          entry.target.classList.toggle("scroll-reveal-visible", entry.isIntersecting);
         });
       },
-      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" },
+      { threshold: 0.14, rootMargin: "0px 0px -8% 0px" },
     );
 
     const visibleLine = window.innerHeight * 0.9;
