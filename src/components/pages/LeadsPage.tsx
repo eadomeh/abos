@@ -4,6 +4,7 @@ import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
 import { Plus, RefreshCw, Target, Trash2, X, UserRound, Phone, Mail, ArrowRight, CircleDollarSign, CalendarDays, Users } from 'lucide-react';
 import type { LeadStatus } from '@/types/database';
+import { CreateFollowUpTaskDialog } from '@/components/tasks/CreateFollowUpTaskDialog';
 
 type LeadRow = {
   id: string; customer_id: string | null; name: string; phone: string | null; email: string | null; source: string;
@@ -23,6 +24,8 @@ export default function LeadsPage({ onNavigate }: { onNavigate?: (page: string) 
   const [selectedLead, setSelectedLead] = useState<LeadRow | null>(null);
   const [converting, setConverting] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [showFollowUp, setShowFollowUp] = useState(false);
+  const canCreateFollowUp = activeBusiness?.role === 'owner' || activeBusiness?.role === 'admin' || activeBusiness?.role === 'agent';
 
   const load = useCallback(async () => {
     if (!activeBusiness) return;
@@ -311,6 +314,15 @@ export default function LeadsPage({ onNavigate }: { onNavigate?: (page: string) 
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+                {canCreateFollowUp && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFollowUp(true)}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold"
+                  >
+                    Create follow-up
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedLead(null)}
@@ -334,6 +346,20 @@ export default function LeadsPage({ onNavigate }: { onNavigate?: (page: string) 
             </div>
           </div>
         </div>
+      )}
+
+      {showFollowUp && selectedLead && activeBusiness && (
+        <CreateFollowUpTaskDialog
+          businessId={activeBusiness.id}
+          link={{
+            kind: 'lead',
+            leadId: selectedLead.id,
+            leadName: selectedLead.name,
+            customerId: selectedLead.customer_id,
+          }}
+          onClose={() => setShowFollowUp(false)}
+          onCreated={() => undefined}
+        />
       )}
 
       {showForm && (

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useBusiness } from '@/context/BusinessContext';
 import { supabase } from '@/lib/supabase';
 import type { Customer } from '@/types/database';
+import { CreateFollowUpTaskDialog } from '@/components/tasks/CreateFollowUpTaskDialog';
 import {
   Users, Plus, Pencil, Trash2, X, Loader2, AlertCircle, ArrowRight,
   Phone, Mail, User, UserPlus, ShoppingCart, MessageCircle, Target,
@@ -40,6 +41,9 @@ export default function CustomersPage({ onNavigate }: { onNavigate?: (page: stri
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customer360, setCustomer360] = useState<Customer360 | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailRefresh, setDetailRefresh] = useState(0);
+  const [followUpFor, setFollowUpFor] = useState<Customer | null>(null);
+  const canCreateFollowUp = activeBusiness?.role === 'owner' || activeBusiness?.role === 'admin' || activeBusiness?.role === 'agent';
 
   const fetchCustomers = useCallback(async () => {
     if (!activeBusiness) { setCustomers([]); setLoading(false); return; }
@@ -142,7 +146,7 @@ export default function CustomersPage({ onNavigate }: { onNavigate?: (page: stri
     return () => {
       cancelled = true;
     };
-  }, [activeBusiness, selectedCustomer]);
+  }, [activeBusiness, selectedCustomer, detailRefresh]);
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-8 overflow-x-hidden">
@@ -281,6 +285,17 @@ export default function CustomersPage({ onNavigate }: { onNavigate?: (page: stri
             setShowModal(true);
           }}
           onNavigate={onNavigate}
+          canCreateFollowUp={canCreateFollowUp}
+          onCreateFollowUp={() => setFollowUpFor(selectedCustomer)}
+        />
+      )}
+
+      {followUpFor && activeBusiness && (
+        <CreateFollowUpTaskDialog
+          businessId={activeBusiness.id}
+          link={{ kind: 'customer', customerId: followUpFor.id, customerName: followUpFor.name }}
+          onClose={() => setFollowUpFor(null)}
+          onCreated={() => setDetailRefresh((value) => value + 1)}
         />
       )}
 
@@ -311,6 +326,8 @@ function Customer360Panel({
   onClose,
   onEdit,
   onNavigate,
+  canCreateFollowUp,
+  onCreateFollowUp,
 }: {
   customer: Customer;
   detail: Customer360 | null;
@@ -318,6 +335,8 @@ function Customer360Panel({
   onClose: () => void;
   onEdit: () => void;
   onNavigate?: (page: string) => void;
+  canCreateFollowUp: boolean;
+  onCreateFollowUp: () => void;
 }) {
   const currency = detail?.recentOrders[0]?.currency ?? 'NGN';
 
@@ -375,6 +394,18 @@ function Customer360Panel({
             <MiniMetric icon={MessageCircle} label="Conversations" value={loading || !detail ? '—' : String(detail.conversationCount)} />
             <MiniMetric icon={ClipboardList} label="Open tasks" value={loading || !detail ? '—' : String(detail.openTaskCount)} />
           </div>
+
+          {canCreateFollowUp && (
+            <div className="flex">
+              <button
+                type="button"
+                onClick={onCreateFollowUp}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold"
+              >
+                <ClipboardList className="w-4 h-4" /> Create follow-up
+              </button>
+            </div>
+          )}
 
           <div className="glass rounded-2xl p-4 md:p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
