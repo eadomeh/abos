@@ -66,15 +66,36 @@ Do not add a second migration or a second settings feature. The next SET-001 act
 - Leads UI does not create a follow-up task when status changes.
 - Analytics ignores query errors.
 
-**Security source gap (not live-verified):**
+**Live schema correction (2026-11-10, after this report was first committed):**
 
-- `tasks_insert` and `tasks_update` still allow `private.is_business_member` (`abos_operating_core.sql`). `tasks_delete` is owner-only. The later role-enforcement migration does not replace those task policies. A viewer may still be able to insert and update tasks if production matches this SQL. Confirm on live before changing it. Do not duplicate the table.
+The source-only claim below was wrong for production. Live `tasks_insert` and `tasks_update` use `private.has_business_role` with `owner`, `admin`, and `agent`. Viewers cannot write tasks in production. Do not claim viewers can write tasks. Do not change those policies in the follow-up slice. `tasks_delete` remains a separate owner-scoped policy in the tracked migration; this correction does not restate delete.
+
+Tracked migration `20260921174026_20260921090000_abos_operating_core.sql` still shows the older `is_business_member` insert/update policies. Live policies have moved ahead of that file. Treat live as the authorization fact. Do not rewrite history to match the file.
+
+Task link foreign keys are ID-only. `related_customer_id` and `related_lead_id` do not enforce that the referenced row shares the task's `business_id`.
+
+Live counts at correction time: two customer-linked tasks; zero lead-linked tasks; zero existing cross-business customer or lead task links.
+
+`20261022203041_business_ai_settings.sql` is present in live migration history. Do not recreate `business_ai_settings`.
+
+Supabase schema-inspection advisory, recorded only, not remediated:
+
+- Critical: `private.whatsapp_connections` has RLS disabled. Do not apply automatic remediation.
+- Two RLS-enabled tables have no policies: `ai_prompt_blocks`, `ai_runtime_config`.
+- Seven authenticated-executable `SECURITY DEFINER` functions need review.
+- Leaked-password protection is disabled.
+
+## 3b. Original source-only note (superseded for task writes)
+
+**Security source gap (superseded by the live correction above):**
+
+- The first draft said `tasks_insert` and `tasks_update` still allow `private.is_business_member`. That is true of the original tracked SQL and false of live policies. Live writes are owner, admin, and agent only.
 
 **UNTESTED (requires live Supabase, not this task):**
 
-- Applied migration history versus `supabase/migrations/`.
-- Every RLS policy against owner, admin, agent, and viewer.
-- Cross-business access with a second real membership.
+- Applied migration history is not fully diffed here. Exception: `20261022203041_business_ai_settings` is confirmed present in live history.
+- Task insert/update role set is verified live (owner, admin, agent). Other table policies are not fully re-verified in this correction.
+- Cross-business task links: live count was zero. Other cross-business cases were not exhaustively probed.
 - WhatsApp send, webhook, and Embedded Signup.
 - `abos-ai-agent` deployed behavior, including SET-001 preferences.
 - Dashboard bootstrap RPC on production after `1139d93`.
@@ -122,16 +143,13 @@ No Edge Function change.
 
 ## 8. Database migration
 
-**Not required** for the recommended slice if it only reads and writes columns that `abos_operating_core.sql` already defines.
-
-A migration **is** required only if the implementation packet also tightens `tasks_insert` / `tasks_update` so viewers cannot mutate. That policy change must be a reviewed additive migration after live policy inspection. Do not ship it silently inside a UI commit. Do not recreate `business_ai_settings`.
+**Required for same-business integrity.** ID-only foreign keys do not enforce matching `business_id`. The implementation packet must add an additive tracked migration (trigger or equivalent) with a preflight that aborts if any cross-business link already exists. Live count of those links at this correction was zero. Do not alter live task RLS. Do not recreate `business_ai_settings`. Do not apply the migration to production from the implementation commit.
 
 ## 9. Role and tenant isolation
 
 - Every select/insert/update/delete stays filtered by `activeBusiness.id`. Never accept a client-supplied business id that is not the active membership.
-- Related customer and lead ids must be loaded from rows already scoped to that business. Reject or ignore an id that does not belong to it (the FK does not by itself prove same-business).
-- Current source policies: any member can insert/update tasks; only the owner can delete. UI should not pretend viewers are blocked unless a new policy says so.
-- Agent/admin/owner can create follow-ups. Do not grant viewers a new capability.
+- Related customer and lead ids must be loaded from rows already scoped to that business. The foreign key does not prove same-business. A database guard is required.
+- Live task insert and update policies already restrict writes to owner, admin, and agent. Viewers are read-only for those operations. The UI must match that. Do not change the policies.
 - Service role and Edge Functions are not needed.
 - No secrets, no WhatsApp credential reads, no production SQL execution in the implementation until a packet authorizes it.
 
