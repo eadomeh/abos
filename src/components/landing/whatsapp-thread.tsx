@@ -157,7 +157,6 @@ export function WhatsappThread() {
   }, [visible.length, typing, lead]);
 
   function choose(index: number) {
-    setManualPause(true);
     setThreadIndex(index);
   }
 
@@ -176,7 +175,7 @@ export function WhatsappThread() {
         <button
           type="button"
           onClick={() => setManualPause((paused) => !paused)}
-          aria-pressed={!manualPause}
+          aria-pressed={manualPause}
           aria-label={manualPause ? "Play illustrative WhatsApp demo" : "Pause illustrative WhatsApp demo"}
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-xs uppercase tracking-widest text-quiet transition-[color,border-color] duration-150 hover:border-signal/20 hover:text-signal"
         >
