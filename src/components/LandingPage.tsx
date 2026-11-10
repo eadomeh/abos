@@ -41,7 +41,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         <div className="relative z-10">
           <SiteNav onLogin={onLogin} />
 
-          <main>
+          <main id="main">
             <HeroSection />
             <CinematicShowcase />
             <WhatsappSection />

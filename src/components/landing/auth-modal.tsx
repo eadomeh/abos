@@ -11,6 +11,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Mail, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AbosMark } from "@/components/landing/abos-mark";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
@@ -216,7 +217,11 @@ function AuthModal({
         <Dialog.Content
           className="fixed left-1/2 top-1/2 z-50 w-[min(100%-2rem,26rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-charcoal p-6 shadow-[0_0_0_1px_rgba(246,243,236,0.1)] focus:outline-none"
         >
-          <Dialog.Title className="font-display text-xl font-semibold tracking-tight text-harmattan">
+          <div className="mb-4 flex items-center gap-2.5 pr-10">
+            <AbosMark className="h-11 w-auto" title="" />
+            <p className="font-display text-sm font-semibold tracking-[0.22em] text-harmattan">ABOS</p>
+          </div>
+          <Dialog.Title className="pr-10 font-display text-xl font-semibold tracking-tight text-harmattan">
             {title}
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-relaxed text-harmattan-muted">

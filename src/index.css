@@ -300,7 +300,7 @@ body::before {
 }
 
 .map-stage {
-  width: min(100%, 28rem);
+  width: min(86%, 19.5rem);
   aspect-ratio: 200 / 240;
   margin-inline: auto;
   overflow: hidden;
@@ -1008,7 +1008,7 @@ html.abos-gsap .hero-intro {
 
 @media (min-width: 1024px) {
   .cine-track {
-    height: 300svh;
+    height: 240svh;
   }
 }
 

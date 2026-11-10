@@ -59,9 +59,9 @@ export function AgentConsole() {
   }, [reduced]);
 
   return (
-    <div className="rounded-lg border border-harmattan/10 bg-[#0b0c10] p-3 font-mono text-[11px] leading-6 sm:p-4 sm:leading-[1.9] md:text-xs">
+    <div className="rounded-lg border border-harmattan/10 bg-[#0b0c10] p-2.5 font-mono text-[11px] leading-5 sm:p-4 sm:leading-[1.9] md:text-xs">
       <p className="sr-only">Live tool calls the ABOS agent makes while it works.</p>
-      <div aria-hidden="true" className="min-h-[12rem] sm:min-h-[9.5em]">
+      <div aria-hidden="true" className="min-h-[10rem] sm:min-h-[9.5em]">
         {lines.map((text, i) => (
           <p key={i} className={toneClass[LINES[i].tone]}>
             {text}

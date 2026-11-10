@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { AbosMark } from '@/components/landing/abos-mark';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'reset';
 
@@ -193,8 +194,8 @@ export default function AuthScreen({ onBack, emailVerified = false, onRecoveryCo
         <section className="mx-auto w-full max-w-md">
           <div className="mb-7 flex items-center justify-between lg:hidden">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-300/10">
-                <Sparkles className="h-5 w-5 text-emerald-300" />
+              <div className="grid h-10 w-12 place-items-center">
+                <AbosMark className="h-10 w-auto" title="" />
               </div>
               <div>
                 <div className="text-sm font-semibold tracking-[.22em]">ABOS</div>
