@@ -13,7 +13,7 @@ export function CtaSection() {
               Get started with ABOS
             </h2>
             <p className="mt-4 text-lede text-harmattan-muted">
-              Create an account and put the agent on the WhatsApp chats you already run.
+              Create an account to explore ABOS and configure the workspace for your business.
             </p>
           </div>
           <div className="lg:col-span-4 lg:col-start-9">

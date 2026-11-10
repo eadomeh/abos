@@ -1,10 +1,6 @@
 import { ArrowRight } from "lucide-react";
-import { useAuthUi } from "@/components/landing/auth-modal";
-import { Button } from "@/components/ui/button";
 
 export function VisionSection() {
-  const { openAuth } = useAuthUi();
-
   return (
     <section className="py-24 sm:py-32">
       <div className="mx-auto max-w-5xl px-5 text-center sm:px-8" data-scroll-reveal>
@@ -16,10 +12,14 @@ export function VisionSection() {
           ABOS understands the business, remembers the business, coordinates the business, automates the
           business, and helps the business act — with humans still in control.
         </p>
-        <Button type="button" size="lg" className="mt-9 rounded-2xl px-7 py-4" onClick={() => openAuth("signup")}>
-          Start with ABOS
+        <button
+          type="button"
+          onClick={() => document.getElementById("get-started")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className="mt-9 inline-flex items-center rounded-2xl border border-white/15 px-5 py-3 text-sm text-harmattan-muted transition-colors hover:text-harmattan"
+        >
+          Continue to get started
           <ArrowRight className="ml-2 size-4" />
-        </Button>
+        </button>
       </div>
     </section>
   );

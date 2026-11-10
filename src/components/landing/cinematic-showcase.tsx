@@ -4,65 +4,90 @@ import gsap from "gsap";
 import { AbosMark } from "@/components/landing/abos-mark";
 import { cn } from "@/lib/utils";
 
-const DURATION = 20.4;
+const LOOP = 10.6;
 
 function readReducedMotion() {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function GlassCard({
-  cine,
+function ModuleCard({
+  id,
   className,
   kicker,
   title,
   detail,
+  status,
 }: {
-  cine: string;
+  id: string;
   className?: string;
   kicker: string;
   title: string;
   detail: string;
+  status?: string;
 }) {
   return (
-    <div data-cine={cine} className={cn("cine-glass", className)}>
-      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-signal">{kicker}</p>
-      <p className="mt-1 font-display text-sm font-semibold tracking-normal text-harmattan md:text-base">{title}</p>
-      <p className="mt-1 text-[11px] leading-snug text-harmattan-muted md:text-xs">{detail}</p>
+    <div data-cine="card" data-cursor={id} className={cn("cine-glass w-[44%] max-w-[230px]", className)}>
+      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">{kicker}</p>
+      <p className="mt-1 font-display text-sm font-semibold tracking-normal text-harmattan">{title}</p>
+      <p className="mt-1 text-[11px] leading-snug text-harmattan-muted">{detail}</p>
+      {status ? (
+        <p className="mt-2 inline-flex rounded-full border border-amber-200/30 bg-amber-200/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber">
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function Poster() {
   return (
-    <div className="absolute inset-0" data-cine-poster>
+    <div className="absolute inset-0">
       <div className="cine-grid absolute inset-0" aria-hidden="true" />
       <div className="cine-glow absolute inset-0" aria-hidden="true" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center">
-        <AbosMark glow className="h-28 w-auto sm:h-36" title="" />
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+        <AbosMark glow className="h-24 w-auto sm:h-32" title="" />
         <p className="mt-5 max-w-md font-display text-lg font-semibold leading-snug text-harmattan sm:text-2xl">
           African business intelligence. Connected operations. Real execution.
         </p>
       </div>
-      <GlassCard
-        cine="poster-customers"
-        className="left-[6%] top-[10%] w-[42%] max-w-[220px] md:w-[200px]"
-        kicker="Customers"
-        title="Context held"
-        detail="Who they are stays attached to the work."
-      />
-      <GlassCard
-        cine="poster-orders"
-        className="right-[6%] top-[14%] hidden w-[200px] sm:block"
-        kicker="Orders"
-        title="Work in view"
-        detail="Requests sit with the operation, not in a side chat."
-      />
-      <div className="cine-glass bottom-[8%] left-1/2 w-[min(92%,320px)] -translate-x-1/2 border-amber-200/20">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-amber">Human control</p>
+      <div className="cine-glass bottom-[18%] left-[6%] hidden w-[200px] md:block">
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">Customers</p>
+        <p className="mt-1 font-display text-sm font-semibold text-harmattan">Context held</p>
+        <p className="mt-1 text-[11px] text-harmattan-muted">Who they are stays attached to the work.</p>
+      </div>
+      <div className="cine-glass bottom-[18%] right-[6%] hidden w-[200px] md:block">
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">Orders</p>
+        <p className="mt-1 font-display text-sm font-semibold text-harmattan">Work in view</p>
+        <p className="mt-1 text-[11px] text-harmattan-muted">Requests sit with the operation.</p>
+      </div>
+      <div className="cine-glass absolute bottom-[8%] left-1/2 w-[min(92%,320px)] -translate-x-1/2 border-amber-200/25">
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber">Human control</p>
         <p className="mt-1 font-display text-sm font-semibold text-harmattan">Held for review</p>
         <p className="mt-1 text-[11px] leading-snug text-harmattan-muted">Nothing sensitive executes before someone authorised approves it.</p>
       </div>
+    </div>
+  );
+}
+
+function CursorGraphic() {
+  return (
+    <div data-cine="cursor" className="cine-cursor" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path
+          d="M5 3.2 22.4 13.1c.8.45.62 1.64-.28 1.84l-6.7 1.5-1.7 6.55c-.22.86-1.38.96-1.76.16L5.2 4.7c-.28-.6.28-1.22.8-1.5Z"
+          fill="#f4fff9"
+          stroke="#06281c"
+          strokeWidth="1.2"
+        />
+        <path
+          d="M6.2 5.2 19.6 13.2l-5.5 1.22"
+          stroke="#6ee7b7"
+          strokeWidth="1.1"
+          strokeLinecap="round"
+        />
+      </svg>
+      <span data-cine="ripple" className="cine-ripple" />
     </div>
   );
 }
@@ -74,7 +99,7 @@ export function CinematicShowcase() {
   const inView = useRef(false);
   const [reduced, setReduced] = useState(readReducedMotion);
   const [paused, setPaused] = useState(false);
-  const [scene, setScene] = useState("Illustrative preview");
+  const [scene, setScene] = useState("Signal arrives");
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -89,75 +114,173 @@ export function CinematicShowcase() {
 
     const q = (name: string) => stage.querySelectorAll<HTMLElement>(`[data-cine="${name}"]`);
     const one = (name: string) => stage.querySelector<HTMLElement>(`[data-cine="${name}"]`);
+    const cursorTarget = (id: string) => stage.querySelector<HTMLElement>(`[data-cursor="${id}"]`);
 
-    const setSceneNow = (label: string) => {
-      setScene(label);
+    const point = (id: string) => {
+      const el = cursorTarget(id);
+      const sr = stage.getBoundingClientRect();
+      if (!el || sr.width < 8) return { x: 24, y: 24 };
+      const tr = el.getBoundingClientRect();
+      return {
+        x: tr.left - sr.left + tr.width * 0.62,
+        y: tr.top - sr.top + Math.min(34, Math.max(12, tr.height * 0.38)),
+      };
     };
 
     const ctx = gsap.context(() => {
       const messages = q("message");
-      const paths = q("path");
-      const nodes = q("node");
-      const panels = q("panel");
-      const links = q("link");
-      const ops = q("ops");
+      const cards = q("card");
       const emblem = one("emblem");
-      const emblemHalo = one("halo");
+      const halo = one("halo");
       const approval = one("approval");
       const statement = one("statement");
-      const sweep = one("sweep");
+      const analytics = cursorTarget("analytics");
+      const cursor = one("cursor");
+      const ripple = one("ripple");
+      const wire = one("wire");
       const progress = one("progress");
+      const wireState = { x2: 0, y2: 0 };
 
-      gsap.set(paths, { scaleX: 0, transformOrigin: "left center" });
-      gsap.set([messages, paths, nodes, panels, links, ops, emblem, emblemHalo, approval, statement, sweep], {
-        autoAlpha: 0,
-      });
-      gsap.set(messages, { y: 16 });
-      gsap.set(panels, { y: 20, scale: 0.98 });
-      gsap.set(ops, { y: 22, scale: 0.98 });
-      gsap.set(emblem, { scale: 0.86 });
-      gsap.set(approval, { y: 16 });
-      gsap.set(statement, { y: 12 });
+      gsap.set([messages, cards, emblem, halo, approval, statement, analytics, cursor, ripple], { autoAlpha: 0 });
+      gsap.set(messages, { y: 10 });
+      gsap.set(cards, { y: 12, scale: 0.98 });
+      gsap.set(emblem, { scale: 0.9 });
+      gsap.set(approval, { y: 10 });
+      gsap.set(statement, { y: 8 });
+      gsap.set(cursor, { x: 12, y: 28 });
       if (progress) gsap.set(progress, { scaleX: 0, transformOrigin: "left center" });
+      stage.setAttribute("data-ready", "true");
 
       const tl = gsap.timeline({
         paused: true,
         repeat: -1,
-        repeatDelay: 0.8,
+        repeatDelay: 0.2,
         defaults: { ease: "power2.out" },
+        onStart: () => setScene("Signal arrives"),
+        onRepeat: () => setScene("Signal arrives"),
       });
 
-      tl.call(() => setSceneNow("Signal arrives"), undefined, 0);
-      tl.to(sweep, { autoAlpha: 0.5, xPercent: 140, duration: 2.6, ease: "power1.inOut" }, 0.1);
-      tl.to(messages, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.18 }, 0.2);
-      tl.to(paths, { autoAlpha: 0.8, scaleX: 1, duration: 0.9, stagger: 0.12 }, 0.65);
-      tl.to(nodes, { autoAlpha: 1, duration: 0.35, stagger: 0.08 }, 0.85);
-      tl.to(messages, { autoAlpha: 0.4, duration: 0.55 }, 3.4);
+      const mark = (id: string, on: boolean) => {
+        cursorTarget(id)?.toggleAttribute("data-hot", on);
+      };
 
-      tl.call(() => setSceneNow("Business brain"), undefined, 4);
-      tl.to(emblemHalo, { autoAlpha: 1, duration: 0.55 }, 4);
-      tl.to(emblem, { autoAlpha: 1, scale: 1, duration: 0.8, ease: "power3.out" }, 4.05);
-      tl.to(panels, { autoAlpha: 1, y: 0, scale: 1, duration: 0.65, stagger: 0.12 }, 4.4);
-      tl.to(links, { autoAlpha: 0.85, duration: 0.4, stagger: 0.1 }, 5.25);
-      tl.to([messages, paths], { autoAlpha: 0, duration: 0.4 }, 7.5);
+      const travel = (id: string, at: number, duration = 0.28) => {
+        tl.to(cursor, {
+          autoAlpha: 1,
+          x: () => point(id).x,
+          y: () => point(id).y,
+          duration,
+          ease: "power3.inOut",
+        }, at);
+      };
 
-      tl.call(() => setSceneNow("Operations connect"), undefined, 8);
-      tl.to(ops, { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.15 }, 8.05);
-      tl.to(panels, { autoAlpha: 0.5, duration: 0.45 }, 8.4);
-      tl.to(links, { autoAlpha: 1, duration: 0.35 }, 9.2);
-      tl.to(links, { autoAlpha: 0.35, duration: 0.35 }, 9.7);
-      tl.to(links, { autoAlpha: 0.9, duration: 0.35 }, 10.2);
+      const click = (id: string, at: number) => {
+        tl.call(() => mark(id, true), undefined, at);
+        tl.fromTo(ripple, { autoAlpha: 0.85, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.28, ease: "power2.out" }, at);
+        tl.call(() => mark(id, false), undefined, at + 0.62);
+      };
 
-      tl.call(() => setSceneNow("Human control"), undefined, 12.4);
-      tl.to(approval, { autoAlpha: 1, y: 0, duration: 0.65, ease: "power3.out" }, 12.45);
-      tl.to([ops, panels], { autoAlpha: 0.28, duration: 0.45 }, 12.7);
+      const drawWire = (from: string, to: string, at: number) => {
+        if (!wire) return;
+        tl.call(() => {
+          const a = point(from);
+          wireState.x2 = a.x;
+          wireState.y2 = a.y;
+          wire.setAttribute("x1", String(a.x));
+          wire.setAttribute("y1", String(a.y));
+          wire.setAttribute("x2", String(a.x));
+          wire.setAttribute("y2", String(a.y));
+          gsap.set(wire, { autoAlpha: 1 });
+        }, undefined, at);
+        tl.to(wireState, {
+          x2: () => point(to).x,
+          y2: () => point(to).y,
+          duration: 0.26,
+          ease: "power2.out",
+          onUpdate: () => {
+            wire.setAttribute("x2", String(wireState.x2));
+            wire.setAttribute("y2", String(wireState.y2));
+          },
+        }, at);
+      };
 
-      tl.call(() => setSceneNow("Connected future"), undefined, 16.2);
-      tl.to([panels, ops, links, nodes, approval, emblemHalo, paths], { autoAlpha: 0, duration: 0.65 }, 16.25);
-      tl.to(emblem, { scale: 1.05, duration: 0.7, ease: "power2.inOut" }, 16.45);
-      tl.to(statement, { autoAlpha: 1, y: 0, duration: 0.65 }, 17.1);
+      tl.set(cursor, { autoAlpha: 1 }, 0);
+      tl.to(messages, { autoAlpha: 1, y: 0, duration: 0.28, stagger: 0.06 }, 0.05);
+      travel("signal", 0.12, 0.32);
+      click("signal", 0.46);
+
+      tl.call(() => setScene("Business intelligence"), undefined, 0.85);
+      tl.to(halo, { autoAlpha: 1, duration: 0.25 }, 0.85);
+      tl.to(emblem, { autoAlpha: 1, scale: 1, duration: 0.32, ease: "power3.out" }, 0.88);
+      travel("emblem", 0.72, 0.28);
+      click("emblem", 1.02);
+      tl.to(messages, { autoAlpha: 0, duration: 0.2 }, 1.05);
+
+      tl.to(cursorTarget("customers"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.26 }, 1.15);
+      travel("customers", 1.18, 0.26);
+      click("customers", 1.46);
+      drawWire("emblem", "customers", 1.46);
+
+      tl.to(cursorTarget("products"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.26 }, 1.78);
+      travel("products", 1.8, 0.26);
+      click("products", 2.08);
+      drawWire("emblem", "products", 2.08);
+
+      tl.to(cursorTarget("knowledge"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.26 }, 2.4);
+      tl.to([cursorTarget("customers")], { autoAlpha: 0.28, duration: 0.2 }, 2.45);
+      travel("knowledge", 2.42, 0.24);
+      click("knowledge", 2.68);
+
+      tl.call(() => setScene("Operations connect"), undefined, 3.05);
+      tl.to(cursorTarget("inventory"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.24 }, 3.08);
+      tl.to(cursorTarget("products"), { autoAlpha: 0.28, duration: 0.18 }, 3.1);
+      travel("inventory", 3.1, 0.24);
+      click("inventory", 3.36);
+      drawWire("emblem", "inventory", 3.36);
+
+      tl.to(cursorTarget("orders"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.24 }, 3.62);
+      tl.to(cursorTarget("knowledge"), { autoAlpha: 0.22, duration: 0.16 }, 3.64);
+      travel("orders", 3.64, 0.24);
+      click("orders", 3.9);
+      drawWire("emblem", "orders", 3.9);
+
+      tl.to(cursorTarget("delivery"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.24 }, 4.16);
+      tl.to(cursorTarget("inventory"), { autoAlpha: 0.22, duration: 0.16 }, 4.18);
+      travel("delivery", 4.18, 0.24);
+      click("delivery", 4.44);
+      drawWire("emblem", "delivery", 4.44);
+
+      tl.call(() => setScene("Human control"), undefined, 4.85);
+      tl.to(cursorTarget("tasks"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.24 }, 4.88);
+      tl.to([cursorTarget("orders"), cursorTarget("delivery")], { autoAlpha: 0.2, duration: 0.16 }, 4.9);
+      travel("tasks", 4.9, 0.24);
+      click("tasks", 5.16);
+      drawWire("emblem", "tasks", 5.16);
+
+      tl.to(cursorTarget("team"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.24 }, 5.42);
+      travel("team", 5.44, 0.24);
+      click("team", 5.7);
+      drawWire("emblem", "team", 5.7);
+
+      tl.to([emblem, halo], { autoAlpha: 0.15, duration: 0.22 }, 6.05);
+      tl.to(approval, { autoAlpha: 1, y: 0, duration: 0.28 }, 6.08);
+      tl.to(cards, { autoAlpha: 0.12, duration: 0.2 }, 6.1);
+      travel("approval", 6.12, 0.26);
+      click("approval", 6.4);
+
+      tl.call(() => setScene("Connected future"), undefined, 7.15);
+      tl.to([cards, approval, wire], { autoAlpha: 0, duration: 0.28 }, 7.15);
+      tl.to([emblem, halo], { autoAlpha: 1, duration: 0.28 }, 7.2);
+      tl.to(emblem, { scale: 1.04, duration: 0.35 }, 7.25);
+      tl.to(analytics, { autoAlpha: 1, y: 0, scale: 1, duration: 0.26 }, 7.55);
+      travel("analytics", 7.58, 0.28);
+      click("analytics", 7.88);
+      tl.to(analytics, { autoAlpha: 0, duration: 0.22 }, 8.45);
+      tl.to(statement, { autoAlpha: 1, y: 0, duration: 0.32 }, 8.55);
+      travel("finale", 8.7, 0.3);
+
       if (progress) {
-        tl.fromTo(progress, { scaleX: 0 }, { scaleX: 1, duration: DURATION, ease: "none" }, 0);
+        tl.fromTo(progress, { scaleX: 0 }, { scaleX: 1, duration: LOOP, ease: "none" }, 0);
       }
 
       timelineRef.current = tl;
@@ -173,19 +296,29 @@ export function CinematicShowcase() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        inView.current = !!entry?.isIntersecting;
+        if (!entry) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.15) inView.current = true;
+        else if (!entry.isIntersecting || entry.intersectionRatio < 0.05) inView.current = false;
         syncPlayback();
       },
-      { threshold: 0.35 },
+      { threshold: [0, 0.05, 0.15, 0.4], rootMargin: "0px 0px -6% 0px" },
     );
     observer.observe(stage);
 
     const onVisibility = () => syncPlayback();
     document.addEventListener("visibilitychange", onVisibility);
 
+    const onResize = () => {
+      timelineRef.current?.invalidate();
+    };
+    const resize = new ResizeObserver(onResize);
+    resize.observe(stage);
+
     return () => {
       observer.disconnect();
+      resize.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
+      stage.removeAttribute("data-ready");
       ctx.revert();
       timelineRef.current = null;
     };
@@ -205,6 +338,7 @@ export function CinematicShowcase() {
     if (!tl) return;
     userPaused.current = false;
     setPaused(false);
+    setScene("Signal arrives");
     tl.restart();
     if (!inView.current || document.visibilityState !== "visible") tl.pause();
   };
@@ -223,94 +357,82 @@ export function CinematicShowcase() {
 
       <div
         ref={stageRef}
-        className="cine-stage relative mx-auto w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)] aspect-[4/5] md:aspect-video"
+        className={cn(
+          "cine-stage relative mx-auto aspect-[4/5] w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)] md:aspect-video",
+          !reduced && "cine-live",
+        )}
       >
         <div className="cine-grid absolute inset-0" aria-hidden="true" />
         <div className="cine-glow absolute inset-0" aria-hidden="true" />
-        <div data-cine="sweep" className="cine-sweep" aria-hidden="true" />
-        <span data-cine="node" className="cine-node left-[18%] top-[22%]" aria-hidden="true" />
-        <span data-cine="node" className="cine-node left-[72%] top-[28%] hidden md:block" aria-hidden="true" />
-        <span data-cine="node" className="cine-node left-[30%] top-[70%]" aria-hidden="true" />
-        <span data-cine="path" className="cine-path left-[12%] top-[30%] w-[28%] origin-left" aria-hidden="true" />
-        <span data-cine="path" className="cine-path right-[10%] top-[36%] hidden w-[24%] origin-right md:block" aria-hidden="true" />
-        <span data-cine="path" className="cine-path bottom-[24%] left-[22%] w-[30%] origin-left" aria-hidden="true" />
 
         {reduced ? (
           <Poster />
         ) : (
           <>
-            <div data-cine="message" className="cine-glass left-[5%] top-[8%] w-[46%] max-w-[230px] md:left-[7%] md:top-[12%] md:w-[220px]">
+            <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full" aria-hidden="true">
+              <line data-cine="wire" x1="0" y1="0" x2="0" y2="0" stroke="rgba(110,231,183,0.8)" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+
+            <div data-cine="message" data-cursor="signal" className="cine-glass left-[4%] top-[7%] w-[58%] max-w-[230px] md:left-[6%] md:top-[10%] md:w-[220px]">
               <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Illustrative message</p>
               <p className="mt-1 text-xs leading-snug text-harmattan md:text-sm">Can you still help me with this order?</p>
             </div>
-            <div data-cine="message" className="cine-glass right-[5%] top-[12%] w-[46%] max-w-[230px] md:right-[8%] md:top-[16%] md:w-[220px]">
+            <div data-cine="message" className="cine-glass right-[4%] top-[7%] hidden w-[220px] md:block">
               <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Illustrative message</p>
-              <p className="mt-1 text-xs leading-snug text-harmattan md:text-sm">Is delivery open this week?</p>
-            </div>
-            <div className="absolute left-1/2 top-[8%] hidden -translate-x-1/2 md:block">
-              <div data-cine="message" className="cine-glass cine-inline w-[260px]">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Illustrative message</p>
-                <p className="mt-1 text-sm leading-snug text-harmattan">Do you have this in another colour?</p>
-              </div>
+              <p className="mt-1 text-sm leading-snug text-harmattan">Is delivery open this week?</p>
             </div>
 
             <div data-cine="halo" className="cine-halo" aria-hidden="true" />
-            <div className="absolute left-1/2 top-[34%] -translate-x-1/2 -translate-y-1/2 md:top-[44%]">
-              <div data-cine="emblem">
-                <AbosMark glow className="h-24 w-auto sm:h-28 md:h-40" title="" />
+            <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 md:top-1/2">
+              <div data-cine="emblem" data-cursor="emblem">
+                <AbosMark glow className="h-20 w-auto sm:h-24 md:h-32" title="" />
               </div>
             </div>
 
-            <GlassCard cine="panel" className="left-[4%] top-[50%] w-[46%] max-w-[220px] md:left-[5%] md:top-[22%] md:w-[210px]" kicker="Customers" title="Shared context" detail="The person stays attached to the thread." />
-            <GlassCard cine="panel" className="right-[4%] top-[50%] w-[46%] max-w-[220px] md:right-[5%] md:top-[22%] md:w-[210px]" kicker="Products" title="What they mean" detail="The offer stays next to the question." />
-            <GlassCard cine="panel" className="bottom-[18%] left-[5%] hidden w-[210px] md:bottom-[30%] md:block" kicker="Orders" title="The work" detail="A request becomes an operation." />
-            <GlassCard cine="panel" className="bottom-[18%] right-[5%] hidden w-[210px] md:bottom-[30%] md:block" kicker="Knowledge" title="What ABOS knows" detail="Prior context is available, not guessed." />
+            <ModuleCard id="customers" className="left-[4%] top-[16%] md:left-[4%] md:top-[12%] md:w-[220px]" kicker="Customers and leads" title="Shared context" detail="The person stays attached to the thread." />
+            <ModuleCard id="products" className="right-[4%] top-[16%] md:right-[4%] md:top-[12%] md:w-[220px]" kicker="Products and catalog" title="What they mean" detail="The offer stays next to the question." />
+            <ModuleCard id="knowledge" className="left-[4%] top-[38%] md:left-[4%] md:top-[38%] md:w-[230px]" kicker="AI rules and knowledge" title="What ABOS can use" detail="Prior context is available, not guessed." />
+            <ModuleCard id="inventory" className="right-[4%] top-[38%] md:right-[4%] md:top-[38%] md:w-[220px]" kicker="Inventory" title="Catalog context" detail="A check is required before anyone treats stock as fact." status="Check required" />
+            <ModuleCard id="orders" className="left-[4%] top-[16%] md:left-[4%] md:top-[12%] md:w-[230px]" kicker="Orders and payments" title="Pending verification" detail="Payment stays unverified until a person confirms it." status="Pending human verification" />
+            <ModuleCard id="delivery" className="right-[4%] top-[16%] md:right-[4%] md:top-[12%] md:w-[220px]" kicker="Delivery and handoff" title="Not confirmed" detail="Handoff waits for confirmation." status="Awaiting confirmation" />
+            <ModuleCard id="tasks" className="left-[4%] top-[38%] md:left-[4%] md:top-[38%] md:w-[230px]" kicker="Tasks and automations" title="Work queued" detail="A step can be prepared. It does not run itself past a hold." />
+            <ModuleCard id="team" className="right-[4%] top-[38%] md:right-[4%] md:top-[38%] md:w-[230px]" kicker="Team and permissions" title="Owner, Admin, Agent, Viewer" detail="Roles decide who may review a sensitive step." />
 
-            <span data-cine="link" className="cine-link left-[27%] top-[32%] hidden w-[16%] md:block" aria-hidden="true" />
-            <span data-cine="link" className="cine-link right-[27%] top-[32%] hidden w-[16%] md:block" aria-hidden="true" />
-
-            <GlassCard cine="ops" className="bottom-[7%] left-[4%] w-[46%] max-w-[230px] md:bottom-[7%] md:left-[5%] md:top-auto md:w-[230px]" kicker="Workflow" title="Route the conversation" detail="The thread joins the operating view." />
-            <div className="absolute bottom-[7%] left-1/2 hidden -translate-x-1/2 md:block">
-              <GlassCard cine="ops" className="cine-inline w-[250px]" kicker="Operations" title="One working surface" detail="Customer context and the task stay together." />
-            </div>
-            <GlassCard cine="ops" className="bottom-[7%] right-[4%] w-[46%] max-w-[230px] md:hidden" kicker="Operations" title="One working surface" detail="Customer context and the task stay together." />
-            <div className="absolute bottom-[7%] right-[5%] hidden md:block">
-              <GlassCard cine="ops" className="cine-inline w-[230px]" kicker="Review" title="Check before action" detail="Sensitive steps wait. They do not auto-complete." />
-            </div>
-
-            <div className="absolute left-1/2 top-[16%] w-[min(88%,340px)] -translate-x-1/2 md:top-[12%]">
-              <div data-cine="approval" className="cine-glass cine-inline border-amber-200/25">
-              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-amber">Human control</p>
-              <p className="mt-1 font-display text-base font-semibold text-harmattan">Awaiting approval</p>
-              <p className="mt-1 text-xs leading-snug text-harmattan-muted">
-                A sensitive action is held. It has not been executed.
-              </p>
-              <p className="mt-3 inline-flex rounded-full border border-amber-200/30 bg-amber-200/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-amber">
-                Not executed
-              </p>
+            <div className="absolute left-1/2 top-[14%] z-[3] w-[min(88%,360px)] -translate-x-1/2 md:top-[12%]">
+              <div data-cine="approval" data-cursor="approval" className="cine-glass cine-inline w-full border-amber-200/30 bg-[#10160f]">
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber">Human control</p>
+                <p className="mt-1 font-display text-base font-semibold text-harmattan">Awaiting approval</p>
+                <p className="mt-1 text-xs leading-snug text-harmattan">A sensitive action is held. It has not been executed.</p>
+                <p className="mt-2 inline-flex rounded-full border border-amber-200/30 bg-amber-200/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber">Not executed</p>
               </div>
             </div>
 
-            <div data-cine="statement" className="absolute inset-x-0 bottom-[12%] px-6 text-center md:bottom-[16%]">
-              <p className="mx-auto max-w-xl font-display text-lg font-semibold leading-snug text-harmattan sm:text-2xl md:text-[1.85rem]">
+            <div className="absolute left-[4%] top-[16%] w-[min(78%,280px)] md:left-1/2 md:top-[14%] md:w-[280px] md:-translate-x-1/2">
+              <div data-cursor="analytics" data-cine="card" className="cine-glass cine-inline w-full">
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">Analytics</p>
+                <p className="mt-1 font-display text-sm font-semibold text-harmattan">Business insights</p>
+                <p className="mt-1 text-[11px] text-harmattan-muted">The operating picture comes together. No live totals are shown here.</p>
+              </div>
+            </div>
+
+            <div data-cine="statement" data-cursor="finale" className="pointer-events-none absolute inset-x-0 bottom-[18%] px-6 pr-24 text-center">
+              <p className="mx-auto max-w-xl font-display text-lg font-semibold leading-snug text-harmattan sm:text-2xl">
                 African business intelligence. Connected operations. Real execution.
               </p>
             </div>
-
-            <div data-cine="progress" className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-signal/70" aria-hidden="true" />
+            <div data-cine="progress" className="absolute inset-x-0 bottom-0 z-[2] h-[2px] origin-left bg-signal/70" aria-hidden="true" />
+            <CursorGraphic />
           </>
         )}
 
-        <p className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-harmattan-muted">
+        <p className="pointer-events-none absolute left-3 top-3 z-[4] rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-harmattan-muted">
           Illustrative product preview
         </p>
 
         {reduced ? null : (
-          <div className="absolute bottom-3 right-3 flex items-center gap-2">
-            <span className="sr-only" aria-live="polite">
-              {scene}
-            </span>
-            <span className="hidden rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-quiet sm:inline" aria-hidden="true">
+          <div className="cine-controls absolute bottom-3 right-3 z-30 flex items-center gap-2">
+            <span className="sr-only" aria-live="polite">{scene}</span>
+            <span className="hidden rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-quiet sm:inline" aria-hidden="true">
               {scene}
             </span>
             <button
@@ -318,7 +440,7 @@ export function CinematicShowcase() {
               onClick={togglePause}
               aria-pressed={paused}
               aria-label={paused ? "Play product preview" : "Pause product preview"}
-              className="grid size-10 place-items-center rounded-full border border-white/15 bg-black/55 text-harmattan"
+              className="grid size-11 place-items-center rounded-full border border-white/15 bg-black/70 text-harmattan"
             >
               {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
             </button>
@@ -326,7 +448,7 @@ export function CinematicShowcase() {
               type="button"
               onClick={replay}
               aria-label="Replay product preview"
-              className="grid size-10 place-items-center rounded-full border border-white/15 bg-black/55 text-harmattan"
+              className="grid size-11 place-items-center rounded-full border border-white/15 bg-black/70 text-harmattan"
             >
               <RotateCcw className="size-4" />
             </button>

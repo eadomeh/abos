@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { AbosMark } from "@/components/landing/abos-mark";
 import { useAuthUi } from "@/components/landing/auth-modal";
@@ -10,7 +10,19 @@ function scrollTo(id: string) {
 
 export function SiteNav({ onLogin }: { onLogin?: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const { openAuth } = useAuthUi();
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   const go = (id: string) => {
     scrollTo(id);
@@ -79,6 +91,8 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
             className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] md:hidden"
             aria-label="Toggle navigation"
             aria-expanded={menuOpen}
+            aria-controls="site-nav-menu"
+            ref={menuButtonRef}
           >
             {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
@@ -86,7 +100,7 @@ export function SiteNav({ onLogin }: { onLogin?: () => void }) {
       </div>
 
       {menuOpen ? (
-        <div className="border-t border-white/[0.06] px-5 py-4 md:hidden">
+        <div id="site-nav-menu" className="border-t border-white/[0.06] px-5 py-4 md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1">
             <button type="button" onClick={() => go("platform")} className="rounded-xl px-3 py-3 text-left text-sm text-harmattan-muted hover:bg-white/[0.03] hover:text-harmattan">
               Platform
