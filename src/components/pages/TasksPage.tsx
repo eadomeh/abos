@@ -105,11 +105,18 @@ export default function TasksPage() {
     high: 'text-amber-400 bg-amber-500/10', urgent: 'text-red-400 bg-red-500/10',
   };
 
+  const writable = canWriteTasks(activeBusiness?.role);
+  const statusLabel: Record<TaskStatus, string> = {
+    todo: 'To do',
+    in_progress: 'In progress',
+    done: 'Done',
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-8 overflow-x-hidden">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div><p className="text-xs uppercase tracking-[0.2em] text-emerald-400 mb-2">Execution</p><h1 className="text-2xl font-bold text-white">Tasks</h1><p className="text-sm text-slate-500 mt-1">Turn customer work and operational follow-ups into a trackable queue.</p></div>
-        <div className="flex flex-wrap gap-2"><button onClick={() => void load()} className="p-2.5 rounded-xl glass text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>{canWriteTasks(activeBusiness?.role) && <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold"><Plus className="w-4 h-4" /> New task</button>}</div>
+        <div className="flex flex-wrap gap-2"><button onClick={() => void load()} className="p-2.5 rounded-xl glass text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></button>{writable && <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-semibold"><Plus className="w-4 h-4" /> New task</button>}</div>
       </div>
       {error && <div className="mb-5 text-sm text-red-300 bg-red-500/5 border border-red-500/20 rounded-xl p-3">{error}</div>}
       <div className="glass rounded-2xl overflow-hidden">
@@ -118,9 +125,13 @@ export default function TasksPage() {
         <div className="divide-y divide-white/[0.05]">
           {tasks.map((task) => (
             <div key={task.id} className={`p-4 md:p-5 flex gap-3 items-start ${task.status === 'done' ? 'opacity-60' : ''}`}>
-              <button onClick={() => void toggleDone(task)} className="mt-0.5 text-slate-600 hover:text-emerald-400">{task.status === 'done' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Circle className="w-5 h-5" />}</button>
+              {writable ? (
+                <button type="button" onClick={() => void toggleDone(task)} className="mt-0.5 text-slate-600 hover:text-emerald-400" aria-label={task.status === 'done' ? 'Mark task not done' : 'Mark task done'}>{task.status === 'done' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Circle className="w-5 h-5" />}</button>
+              ) : (
+                <span className="mt-0.5 text-slate-600" aria-hidden="true">{task.status === 'done' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Circle className="w-5 h-5" />}</span>
+              )}
               <div className="flex-1 min-w-0"><p className={`text-sm font-semibold ${task.status === 'done' ? 'line-through text-slate-500' : 'text-white'}`}>{task.title}</p>{task.description && <p className="text-xs text-slate-600 mt-1 break-words">{task.description}</p>}<div className="flex flex-wrap gap-2 mt-3"><span className={`px-2 py-1 rounded-lg text-[10px] capitalize ${priorityClass[task.priority]}`}>{task.priority}</span><span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.04] text-[10px] text-slate-500"><CalendarClock className="w-3 h-3" /> {dueLabel(task.due_at)}</span>{(linkName(task.customers) || linkName(task.leads)) && <span className="px-2 py-1 rounded-lg bg-emerald-500/10 text-[10px] text-emerald-300 break-words">{[linkName(task.customers) && `Customer: ${linkName(task.customers)}`, linkName(task.leads) && `Lead: ${linkName(task.leads)}`].filter(Boolean).join(' · ')}</span>}</div></div>
-              <div className="flex items-center gap-2"><select value={task.status} onChange={(e) => void setStatus(task, e.target.value as TaskStatus)} className="bg-slate-900/80 border border-white/[0.08] rounded-lg px-2 py-2 text-[10px] text-slate-400"><option value="todo">To do</option><option value="in_progress">In progress</option><option value="done">Done</option></select>{activeBusiness?.role === 'owner' && <button onClick={() => void remove(task)} className="p-2 rounded-lg text-slate-600 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>}</div>
+              <div className="flex items-center gap-2">{writable ? <select value={task.status} onChange={(e) => void setStatus(task, e.target.value as TaskStatus)} className="bg-slate-900/80 border border-white/[0.08] rounded-lg px-2 py-2 text-[10px] text-slate-400"><option value="todo">To do</option><option value="in_progress">In progress</option><option value="done">Done</option></select> : <span className="px-2 py-1 rounded-lg bg-white/[0.04] text-[10px] text-slate-400">{statusLabel[task.status]}</span>}{activeBusiness?.role === 'owner' && <button onClick={() => void remove(task)} className="p-2 rounded-lg text-slate-600 hover:text-red-400" aria-label="Delete task"><Trash2 className="w-4 h-4" /></button>}</div>
             </div>
           ))}
         </div>}
