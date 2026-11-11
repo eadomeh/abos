@@ -132,6 +132,7 @@ export function CinematicShowcase() {
   const trackRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const railFillRef = useRef<HTMLDivElement>(null);
   const [reduced, setReduced] = useState(readReducedMotion);
   const [compact, setCompact] = useState(readCompactViewport);
   const [chapter, setChapter] = useState(0);
@@ -337,6 +338,7 @@ export function CinematicShowcase() {
           const next = chapterFromProgress(self.progress);
           setChapter((current) => (current === next ? current : next));
           if (progress) gsap.set(progress, { scaleX: self.progress });
+          if (railFillRef.current) railFillRef.current.style.transform = `scaleX(${self.progress})`;
         },
       });
     }, host);
@@ -382,9 +384,20 @@ export function CinematicShowcase() {
       ) : (
         <div ref={trackRef} className="cine-track">
           <div ref={hostRef} className="cine-sticky relative px-4 sm:px-8">
-            <p data-cursor="motion-title" className="mb-3 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-signal">
-              ABOS in motion
-            </p>
+            <div className="mb-2 flex items-end justify-between gap-4 lg:mb-3">
+              <div className="min-w-0 flex-1 text-center lg:text-left">
+                <div className="cine-signal-line mx-auto mb-2 hidden lg:mx-0 lg:block" aria-hidden="true" />
+                <p data-cursor="motion-title" className="text-[11px] font-medium uppercase tracking-[0.22em] text-signal lg:text-xs">
+                  ABOS in motion
+                </p>
+                <p className="mx-auto mt-1 hidden max-w-md text-sm leading-snug text-harmattan-muted lg:mx-0 lg:block">
+                  From the first customer signal to connected business execution.
+                </p>
+              </div>
+              <p className="hidden shrink-0 pb-0.5 text-[11px] uppercase tracking-[0.16em] text-quiet lg:block">
+                {String(chapter + 1).padStart(2, "0")} / 05 — {active.label}
+              </p>
+            </div>
             <div
               ref={stageRef}
               className="cine-stage cine-live relative mx-auto aspect-[4/5] w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)] md:aspect-video"
@@ -466,6 +479,40 @@ export function CinematicShowcase() {
                   </div>
                 </div>
               </div>
+            </div>
+            <ol className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 lg:hidden" aria-hidden="true">
+              {CHAPTERS.map((item, index) => (
+                <li
+                  key={item.id}
+                  className={cn(
+                    "text-[10px] uppercase tracking-[0.12em]",
+                    index === chapter ? "text-signal" : "text-quiet",
+                  )}
+                >
+                  {item.label}
+                </li>
+              ))}
+            </ol>
+            <div className="cine-rail relative mt-3 hidden lg:block" aria-hidden="true">
+              <div className="cine-rail-line">
+                <div ref={railFillRef} className="cine-rail-fill" />
+              </div>
+              <ol className="cine-rail-nodes">
+                {CHAPTERS.map((item, index) => (
+                  <li
+                    key={item.id}
+                    className={cn(
+                      "cine-rail-node",
+                      index === chapter && "is-active",
+                      index < chapter && "is-done",
+                    )}
+                  >
+                    <span className="cine-rail-dot" />
+                    <span className="cine-rail-index">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="cine-rail-label">{item.label}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
             <CursorGraphic />
           </div>
