@@ -6,7 +6,6 @@ import { ConversationsSection } from "@/components/landing/conversations-section
 import { CtaSection } from "@/components/landing/cta-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 import { HeroSection } from "@/components/landing/hero-section";
-import { LiveRail } from "@/components/landing/live-rail";
 import { NetworkSection } from "@/components/landing/network-section";
 import { ProblemSection } from "@/components/landing/problem-section";
 import { SiteFooter } from "@/components/landing/site-footer";
@@ -45,7 +44,6 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
             <HeroSection />
             <CinematicShowcase />
             <WhatsappSection />
-            <LiveRail />
             <FeaturesSection />
             <NetworkSection />
             <ConversationsSection />

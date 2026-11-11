@@ -10,7 +10,7 @@ export function WhatsappSection() {
           The chats the business already runs.
         </h2>
         <p className="mt-4 text-lede text-harmattan-muted">
-          An illustrative preview of ABOS beside WhatsApp. These messages are scripted. They are not live customer traffic.
+          An illustrative WhatsApp conversation. Messages, catalog lines, stock, prices and delivery notes are scripted samples, not live business data.
         </p>
       </div>
       <div className="hero-stage">

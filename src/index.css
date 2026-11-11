@@ -1003,12 +1003,16 @@ html.abos-gsap .hero-intro {
 /* === ABOS CINEMATIC SHOWCASE === */
 .cine-track {
   position: relative;
-  height: 280svh;
+  height: auto;
 }
 
-@media (min-width: 1024px) {
-  .cine-track {
-    height: 240svh;
+.cine-track-static {
+  height: auto;
+}
+
+@media (min-width: 900px) and (min-height: 561px) {
+  .cine-track:not(.cine-track-static) {
+    height: 190svh;
   }
 }
 
@@ -1017,33 +1021,26 @@ html.abos-gsap .hero-intro {
   top: 64px;
   z-index: 10;
   display: flex;
-  height: calc(100svh - 76px);
-  max-height: calc(100svh - 76px);
+  height: auto;
+  max-height: none;
   flex-direction: column;
   justify-content: center;
+  padding-bottom: 12px;
+}
+
+@media (min-width: 900px) and (min-height: 561px) {
+  .cine-track:not(.cine-track-static) .cine-sticky {
+    height: calc(100svh - 76px);
+    max-height: calc(100svh - 76px);
+  }
+
+  .cine-track:not(.cine-track-static) .cine-stage {
+    height: clamp(360px, 60svh, 600px);
+  }
 }
 
 .cine-stage {
   contain: layout paint;
-  height: min(100%, calc(100svh - 168px));
-}
-
-@media (max-height: 560px) {
-  .cine-track {
-    height: auto;
-  }
-
-  .cine-sticky {
-    position: relative;
-    top: auto;
-    height: auto;
-    max-height: none;
-  }
-
-  .cine-stage {
-    height: auto;
-    aspect-ratio: 4 / 5;
-  }
 }
 
 .cine-grid {

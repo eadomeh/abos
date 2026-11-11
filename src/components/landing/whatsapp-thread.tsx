@@ -1,4 +1,4 @@
-import { CheckCheck, ChevronRight, MoreHorizontal, Package, Pause, Phone, Play, Search, Video } from "lucide-react";
+import { CheckCheck, MoreHorizontal, Package, Pause, Play, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LIVE_THREADS } from "@/components/landing/chat-data";
 import { PERSON } from "@/components/landing/people";
@@ -46,8 +46,6 @@ export function WhatsappThread() {
   const [booted, setBooted] = useState(false);
   const [shown, setShown] = useState(1);
   const [typing, setTyping] = useState(false);
-  const [catalogReady, setCatalogReady] = useState(false);
-  const [lead, setLead] = useState(false);
 
   const thread = DEMO_THREADS[threadIndex] ?? DEMO_THREADS[0]!;
   const person = PERSON[thread.id];
@@ -89,8 +87,6 @@ export function WhatsappThread() {
     stepRef.current = full;
     setShown(full);
     setTyping(false);
-    setCatalogReady(reduced);
-    setLead(reduced);
   }, [threadIndex, reduced]);
 
   useEffect(() => {
@@ -113,12 +109,8 @@ export function WhatsappThread() {
       if (cancelled) return;
       if (stepRef.current >= messages.length) {
         later(() => {
-          setCatalogReady(true);
-          setLead(true);
-          later(() => {
-            setThreadIndex((i) => (i + 1) % DEMO_THREADS.length);
-          }, 3400);
-        }, 900);
+          setThreadIndex((i) => (i + 1) % DEMO_THREADS.length);
+        }, 3400);
         return;
       }
 
@@ -129,7 +121,6 @@ export function WhatsappThread() {
           stepRef.current += 1;
           setShown(stepRef.current);
           setTyping(false);
-          if (messages[stepRef.current - 1]?.product) setCatalogReady(true);
           later(play, 1600);
         }, 1100);
         return;
@@ -154,7 +145,7 @@ export function WhatsappThread() {
     const el = scroller.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [visible.length, typing, lead]);
+  }, [visible.length, typing]);
 
   function choose(index: number) {
     setThreadIndex(index);
@@ -169,7 +160,7 @@ export function WhatsappThread() {
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-widest text-signal">WhatsApp is a channel</p>
           <p className="mt-1 max-w-xl text-sm text-harmattan-muted">
-            Same business brain as the rest of ABOS — stock, delivery and the next action, never a second chatbot.
+            Scripted customer messages only. Catalog lines, prices and delivery notes inside the chat are sample copy, not live stock or a promise.
           </p>
         </div>
         <button
@@ -189,7 +180,7 @@ export function WhatsappThread() {
         <div className="wa-system-glow pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(110,231,183,.14),transparent_28%),radial-gradient(circle_at_88%_88%,rgba(52,211,153,.08),transparent_24%)]" data-scroll-depth="7" />
         <div className="abos-wa3d-grid wa-system-grid pointer-events-none absolute inset-0 opacity-40" data-scroll-depth="3" />
 
-        <div className="relative grid min-w-0 items-center gap-6 lg:grid-cols-[minmax(0,210px)_minmax(0,1fr)_minmax(0,230px)]">
+        <div className="relative grid min-w-0 items-center gap-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
           <aside className="abos-wa3d-rail hidden min-w-0 lg:block">
             <div className="rounded-[1.6rem] border border-white/10 bg-wa-bg/90 p-3 shadow-[0_30px_80px_rgba(0,0,0,.35)]">
               <div className="mb-3 flex items-center justify-between px-1">
@@ -243,9 +234,7 @@ export function WhatsappThread() {
                     <p className="truncate text-xs text-signal/80">online · scripted demo</p>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-3 text-signal/80" aria-hidden="true">
-                  <Video className="size-4" />
-                  <Phone className="size-4" />
+                <div className="flex shrink-0 items-center text-signal/80" aria-hidden="true">
                   <MoreHorizontal className="size-4" />
                 </div>
               </div>
@@ -292,18 +281,6 @@ export function WhatsappThread() {
                     <TypingDots />
                   </div>
                 ) : null}
-
-                {lead ? (
-                  <div className="wa-next-action flex justify-end">
-                    <div className="max-w-[90%] rounded-2xl rounded-tr-sm bg-signal px-3 py-2 text-xs font-semibold text-primary-foreground shadow-[0_0_24px_rgba(110,231,183,.25)]">
-                      <p className="text-[10px] uppercase tracking-[0.14em] text-onyx/70">Illustrative next step</p>
-                      <p className="mt-0.5 flex items-center gap-2">
-                        <span className="size-1.5 shrink-0 rounded-full bg-onyx" />
-                        {thread.action}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               <div className="border-t border-white/5 bg-wa-header px-3 py-2.5">
@@ -313,20 +290,6 @@ export function WhatsappThread() {
                 </p>
               </div>
             </div>
-          </div>
-
-          <div key={thread.id} className="abos-wa3d-intel hidden min-w-0 space-y-3 lg:block">
-            <ContextPanel
-              name={person.name}
-              city={person.city}
-              product={person.product}
-              preview={person.preview}
-              productMeta={thread.productMeta}
-              action={thread.action}
-              catalogReady={catalogReady}
-              lead={lead}
-              onNext={() => setThreadIndex((i) => (i + 1) % DEMO_THREADS.length)}
-            />
           </div>
         </div>
 
@@ -354,81 +317,6 @@ export function WhatsappThread() {
             );
           })}
         </div>
-
-        <div key={`mobile-${thread.id}`} className="mt-3 lg:hidden">
-          <ContextPanel
-            name={person.name}
-            city={person.city}
-            product={person.product}
-            preview={person.preview}
-            productMeta={thread.productMeta}
-            action={thread.action}
-            catalogReady={catalogReady}
-            lead={lead}
-            onNext={() => setThreadIndex((i) => (i + 1) % DEMO_THREADS.length)}
-            compact
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ContextPanel({
-  name,
-  city,
-  product,
-  preview,
-  productMeta,
-  action,
-  catalogReady,
-  lead,
-  onNext,
-  compact = false,
-}: {
-  name: string;
-  city: string;
-  product: string;
-  preview: string;
-  productMeta: string;
-  action: string;
-  catalogReady: boolean;
-  lead: boolean;
-  onNext: () => void;
-  compact?: boolean;
-}) {
-  return (
-    <div className={cn("space-y-3", compact && "rounded-[1.4rem] border border-white/10 bg-wa-bg/80 p-3")}>
-      <div className={cn("rounded-[1.4rem] border border-signal/15 bg-signal/[0.06] p-4", compact && "border-0 bg-transparent p-1")}>
-        <p className="text-xs uppercase tracking-widest text-signal">Business brain</p>
-        <div className="mt-3 space-y-2 font-mono text-xs leading-5">
-          <p className="break-words text-signal/80">$ find_customer("{name}")</p>
-          <p className="break-words text-amber">→ {city} · {product}</p>
-          <p className={cn("break-words text-signal/80 transition-opacity duration-300", catalogReady ? "opacity-100" : "opacity-35")}>
-            $ search_products("{product.toLowerCase()}")
-          </p>
-          <p className={cn("break-words text-amber transition-opacity duration-300", catalogReady ? "opacity-100" : "opacity-35")}>
-            → {productMeta}
-          </p>
-        </div>
-        <p className="mt-3 text-[10px] uppercase tracking-[0.14em] text-quiet">Scripted catalog line · not live stock</p>
-      </div>
-      <div className={cn("rounded-[1.4rem] border border-white/10 bg-wa-bg/90 p-4", compact && "border-white/8 bg-white/[0.03]")}>
-        <p className="text-xs uppercase tracking-widest text-quiet">Thread context</p>
-        <p className="mt-2 text-sm font-semibold text-harmattan">{name}</p>
-        <p className="mt-1 text-xs leading-5 text-harmattan-muted">
-          {preview} stays attached to the customer, the catalog line and the next step.
-        </p>
-        <p className={cn("mt-2 text-xs font-medium text-signal transition-opacity duration-300", lead ? "opacity-100" : "opacity-40")}>
-          {lead ? action : "Next step appears after the scripted reply."}
-        </p>
-        <button
-          type="button"
-          onClick={onNext}
-          className="mt-3 inline-flex min-h-11 items-center gap-1 text-xs text-signal"
-        >
-          Next thread <ChevronRight className="size-3.5" />
-        </button>
       </div>
     </div>
   );

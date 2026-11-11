@@ -9,6 +9,7 @@ function ProductCard({ label, meta }: { label: string; meta: string }) {
   return (
     <div className="mb-2 overflow-hidden rounded-xl bg-black/25">
       <div className="px-2.5 py-2">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-quiet">Sample data · not live stock or price</p>
         <p className="text-xs font-semibold text-wa-text">{label}</p>
         <p className="text-xs text-signal/80">{meta}</p>
       </div>
@@ -18,7 +19,7 @@ function ProductCard({ label, meta }: { label: string; meta: string }) {
 
 function TypingDots() {
   return (
-    <div className="flex w-fit items-center gap-1 rounded-2xl rounded-bl-sm bg-white/[0.05] px-3 py-2">
+    <div className="flex w-fit items-center gap-1 rounded-2xl rounded-bl-sm bg-white/[0.05] px-3 py-2" aria-hidden="true">
       <span className="typing-dot size-1.5 rounded-full bg-signal/80" />
       <span className="typing-dot size-1.5 rounded-full bg-signal/80" />
       <span className="typing-dot size-1.5 rounded-full bg-signal/80" />
@@ -32,6 +33,13 @@ function lastPreview(thread: LiveThread): { text: string; time: string } {
   return { text: last.text, time: last.time };
 }
 
+function workflowFromVisible(count: number) {
+  if (count <= 1) return "Customer message is on screen.";
+  if (count === 2) return "A scripted catalog reply is on screen.";
+  if (count === 3) return "The customer has added a follow-up in this script.";
+  return "The visible script includes a reply. Nothing has been sent or booked.";
+}
+
 export function ConversationsSection() {
   const reduced = usePrefersReducedMotion();
   const mobile = useIsMobile(1024);
@@ -40,6 +48,7 @@ export function ConversationsSection() {
   const [pinned, setPinned] = useState(false);
   const [shown, setShown] = useState(reduced ? 4 : 1);
   const [typing, setTyping] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
   const thread = useMemo(
@@ -64,6 +73,7 @@ export function ConversationsSection() {
   }, [reduced, pinned, mobile, openThread]);
 
   useEffect(() => {
+    setPreview(null);
     if (reduced) {
       setShown(catalog.length);
       setTyping(false);
@@ -103,169 +113,145 @@ export function ConversationsSection() {
     setOpenThread(true);
   }
 
+  const context = (
+    <div className="space-y-4 p-4 text-sm">
+      <div className="flex items-center gap-3">
+        <img src={person.avatar} alt="" width={40} height={40} className="size-10 rounded-full object-cover" />
+        <div>
+          <p className="font-semibold text-harmattan">{person.name}</p>
+          <p className="text-xs text-quiet">{person.city}, {person.country}</p>
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Product of interest</p>
+        <p className="mt-1 text-harmattan">{person.product}</p>
+        <p className="mt-1 text-xs text-harmattan-muted">{thread.productLabel}</p>
+        <p className="text-xs text-harmattan-muted">{thread.productMeta}</p>
+        <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-quiet">Sample data · not live stock or price</p>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Suggested next steps</p>
+        <div className="mt-2 flex flex-col gap-2">
+          {thread.suggestions.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setPreview(item)}
+              className={cn(
+                "min-h-11 rounded-xl border px-3 text-left text-xs",
+                preview === item ? "border-signal/40 bg-signal/10 text-harmattan" : "border-white/10 text-harmattan-muted",
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+        {preview ? (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-amber">Preview only · not sent</p>
+            <p className="mt-1 text-sm text-harmattan">{preview}</p>
+            <button type="button" className="mt-2 min-h-11 text-xs text-signal" onClick={() => setPreview(null)}>
+              Clear preview
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Visible in this script</p>
+        <p className="mt-1 text-xs leading-5 text-harmattan-muted">{workflowFromVisible(visible.length)}</p>
+      </div>
+      <p className="text-xs leading-5 text-harmattan-muted">
+        A transfer screenshot is a payment claim, not settlement. An authorised teammate must verify payment before an order is marked paid. Product, price, stock and delivery statements must come from trusted business records.
+      </p>
+    </div>
+  );
+
   return (
-    <section id="conversations" className="relative scroll-mt-20 overflow-hidden pb-28 pt-24 sm:py-32">
+    <section id="conversations" className="relative scroll-mt-20 overflow-hidden pb-16 pt-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <p className="text-xs uppercase tracking-widest text-signal/80" data-scroll-reveal>In action</p>
-        <h2 className="mt-4 max-w-xl font-display text-title font-semibold tracking-[-0.05em] sm:text-6xl" data-scroll-reveal>
+        <p className="text-xs uppercase tracking-widest text-signal/80">In action</p>
+        <h2 className="mt-4 max-w-xl font-display text-title font-semibold tracking-[-0.05em]">
           One agent. Every open chat.
         </h2>
-        <p className="mt-6 max-w-2xl text-base leading-7 text-harmattan-muted" data-scroll-reveal>
-          Each name has a face. ABOS stays in the thread, answers from the catalog, and keeps the next
-          action attached to the customer — not to a generic chatbot.
+        <p className="mt-4 max-w-2xl text-base leading-7 text-harmattan-muted">
+          A sample operations desk. Names, messages and catalog lines are scripted. Nothing here is sent, booked or paid.
         </p>
 
-        <div className="mt-10 mb-24 flex h-[min(30.5rem,calc(100svh-16.5rem))] flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-charcoal lg:mb-0 lg:grid lg:h-[36rem] lg:grid-cols-[19.5rem_minmax(0,1fr)]" data-scroll-reveal>
-          <aside
-            className={cn(
-              "min-h-0 flex-col border-white/8 lg:border-r",
-              openThread ? "hidden lg:flex" : "flex flex-1",
-            )}
-          >
+        <div className="mt-8 flex min-h-[28rem] flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-charcoal xl:grid xl:h-[36rem] xl:grid-cols-[16rem_minmax(0,1fr)_18rem]">
+          <aside className={cn("min-h-0 flex-col border-white/8 xl:border-r", openThread ? "hidden xl:flex" : "flex flex-1")}>
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-widest text-quiet">Inbox</p>
-              <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
-                {LIVE_THREADS.length} samples
-              </span>
+              <span className="text-[11px] text-quiet">{LIVE_THREADS.length} samples</span>
             </div>
             <div className="chip-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-4">
               {LIVE_THREADS.map((item) => (
-                <InboxRow
-                  key={item.id}
-                  thread={item}
-                  active={item.id === activeId}
-                  onSelect={() => select(item.id)}
-                />
+                <InboxRow key={item.id} thread={item} active={item.id === activeId} onSelect={() => select(item.id)} />
               ))}
             </div>
           </aside>
 
-          <div
-            className={cn(
-              "min-h-0 flex-col bg-[#070d12]",
-              openThread ? "flex flex-1 inbox-slide-in" : "hidden lg:flex",
-            )}
-          >
-            <div className="flex shrink-0 items-center gap-2 border-b border-white/8 px-2 py-2.5 sm:px-4 sm:py-3">
+          <div className={cn("min-h-0 flex-col border-white/8 bg-[#070d12] xl:border-r", openThread ? "flex flex-1" : "hidden xl:flex")}>
+            <div className="flex shrink-0 items-center gap-2 border-b border-white/8 px-2 py-2.5 sm:px-4">
               <button
                 type="button"
                 onClick={() => setOpenThread(false)}
-                className="grid size-11 shrink-0 place-items-center rounded-full text-harmattan hover:bg-white/5 lg:hidden"
+                className="grid size-11 shrink-0 place-items-center rounded-full text-harmattan hover:bg-white/5 xl:hidden"
                 aria-label="Back to inbox"
               >
                 <ChevronLeft className="size-5" />
               </button>
-              <img
-                src={person.avatar}
-                alt=""
-                width={40}
-                height={40}
-                className="size-10 rounded-full object-cover ring-1 ring-white/10"
-              />
+              <img src={person.avatar} alt="" width={40} height={40} className="size-10 rounded-full object-cover ring-1 ring-white/10" />
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-sm font-semibold text-harmattan">
-                  {person.name}
-                  <span className="size-1.5 rounded-full bg-signal" />
-                </p>
-                <p className="truncate text-xs text-quiet">
-                  {person.city}, {person.country} · {person.product}
-                </p>
+                <p className="truncate text-sm font-semibold text-harmattan">{person.name}</p>
+                <p className="truncate text-xs text-quiet">{person.city}, {person.country} · {person.product}</p>
               </div>
             </div>
-
             <div ref={scroller} className="chip-scroll flex min-h-0 flex-1 flex-col justify-end gap-2.5 overflow-y-auto px-3 py-4 sm:px-4">
               <p className="mx-auto rounded-full bg-black/25 px-3 py-1 text-[11px] uppercase tracking-widest text-quiet">
-                ABOS is handling this conversation
+                Illustrative demo · not a live chat
               </p>
               {visible.map((message, index) => (
-                <div
-                  key={`${thread.id}-${index}-${message.text.slice(0, 12)}`}
-                  className={cn("flex", message.side === "abos" ? "justify-end" : "justify-start")}
-                >
-                  {message.side === "customer" ? (
-                    <img
-                      src={person.avatar}
-                      alt=""
-                      width={28}
-                      height={28}
-                      className="mr-2 mt-1 size-7 shrink-0 rounded-full object-cover"
-                    />
-                  ) : null}
-                  <div
-                    className={cn(
-                      "max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-5 text-wa-text",
-                      message.side === "customer" ? "rounded-tl-sm bg-wa-in" : "rounded-tr-sm bg-wa-out",
-                    )}
-                  >
+                <div key={`${thread.id}-${index}`} className={cn("flex", message.side === "abos" ? "justify-end" : "justify-start")}>
+                  <div className={cn("max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-5 text-wa-text", message.side === "customer" ? "rounded-tl-sm bg-wa-in" : "rounded-tr-sm bg-wa-out")}>
                     {message.product ? <ProductCard label={thread.productLabel} meta={thread.productMeta} /> : null}
                     <p>{message.text}</p>
-                    <p
-                      className={cn(
-                        "mt-1 flex items-center justify-end gap-1 text-[11px]",
-                        message.side === "abos" ? "text-signal/70" : "text-wa-meta",
-                      )}
-                    >
+                    <p className={cn("mt-1 flex items-center justify-end gap-1 text-[11px]", message.side === "abos" ? "text-signal" : "text-wa-meta")}>
                       {message.time}
                       {message.side === "abos" ? <CheckCheck className="size-3" /> : null}
                     </p>
                   </div>
                 </div>
               ))}
-              {typing ? (
-                <div className="flex justify-end">
-                  <TypingDots />
-                </div>
-              ) : null}
-            </div>
-
-            <div className="shrink-0 border-t border-white/8 px-3 pb-3 pt-3 sm:px-4">
-              <p className="rounded-full bg-white/[0.03] px-3 py-2 text-center text-[11px] text-quiet">
-                Illustrative demo · Not a live chat
-              </p>
+              {typing ? <div className="flex justify-end"><TypingDots /></div> : null}
             </div>
           </div>
+
+          <aside className={cn("max-h-80 overflow-y-auto border-t border-white/8 xl:max-h-none xl:border-t-0", openThread ? "block" : "hidden xl:block")}>
+            {context}
+          </aside>
         </div>
       </div>
     </section>
   );
 }
 
-function InboxRow({
-  thread,
-  active,
-  onSelect,
-}: {
-  thread: LiveThread;
-  active: boolean;
-  onSelect: () => void;
-}) {
+function InboxRow({ thread, active, onSelect }: { thread: LiveThread; active: boolean; onSelect: () => void }) {
   const person = PERSON[thread.id];
   const preview = lastPreview(thread);
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-[background-color] duration-150",
-        active ? "bg-signal/10 ring-1 ring-signal/20" : "hover:bg-white/[0.04]",
-      )}
+      className={cn("flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-3 text-left", active ? "bg-signal/10 ring-1 ring-signal/20" : "hover:bg-white/[0.04]")}
     >
-      <span className="relative shrink-0">
-        <img
-          src={person.avatar}
-          alt=""
-          width={48}
-          height={48}
-          className="size-12 rounded-full object-cover ring-1 ring-white/10"
-        />
-        <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-signal ring-2 ring-charcoal" />
-      </span>
+      <img src={person.avatar} alt="" width={48} height={48} className="size-12 shrink-0 rounded-full object-cover ring-1 ring-white/10" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center justify-between gap-2">
           <span className="truncate text-sm font-medium text-harmattan">{person.name}</span>
           <span className="shrink-0 text-[11px] text-quiet">{preview.time}</span>
         </span>
-        <span className="mt-0.5 line-clamp-1 text-xs leading-5 text-quiet">{preview.text}</span>
+        <span className="mt-0.5 block truncate text-xs text-quiet">{person.city}, {person.country}</span>
+        <span className="line-clamp-1 text-xs leading-5 text-quiet">{preview.text}</span>
       </span>
     </button>
   );
