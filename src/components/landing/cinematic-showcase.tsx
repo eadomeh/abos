@@ -14,6 +14,14 @@ const STAGES = [
 ] as const;
 
 const PATH = "M 80 48 C 220 48, 260 120, 400 140 S 620 210, 500 250 S 220 320, 420 360 S 760 430, 880 460";
+const ANCHOR_T = [0.09, 0.28, 0.48, 0.68, 0.88] as const;
+const LABEL_OFFSET = [
+  { dx: 18, dy: -28 },
+  { dx: 22, dy: 22 },
+  { dx: -168, dy: -30 },
+  { dx: 20, dy: 24 },
+  { dx: -172, dy: -28 },
+] as const;
 
 function stageFromProgress(progress: number) {
   if (progress < 0.18) return 0;
@@ -30,13 +38,16 @@ function readMotionOff() {
     || !window.matchMedia("(min-width: 900px)").matches;
 }
 
+type Point = { x: number; y: number };
+
 export function CinematicShowcase() {
   const trackRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
-  const markerRef = useRef<SVGCircleElement>(null);
+  const markerRef = useRef<SVGGElement>(null);
   const [staticView, setStaticView] = useState(readMotionOff);
   const [stage, setStage] = useState(0);
   const [narrow, setNarrow] = useState(true);
+  const [anchors, setAnchors] = useState<Point[]>([]);
   const labelId = useId();
 
   useEffect(() => {
@@ -65,12 +76,21 @@ export function CinematicShowcase() {
     path.style.strokeDasharray = `${length}`;
     path.style.strokeDashoffset = `${length}`;
 
+    const points = ANCHOR_T.map((t) => {
+      const point = path.getPointAtLength(length * t);
+      return { x: point.x, y: point.y };
+    });
+    setAnchors(points);
+
     const place = (progress: number) => {
       const drawn = Math.max(0, Math.min(1, progress));
       path.style.strokeDashoffset = `${length * (1 - drawn)}`;
-      const point = path.getPointAtLength(length * drawn);
-      marker.setAttribute("cx", String(point.x));
-      marker.setAttribute("cy", String(point.y));
+      const distance = length * drawn;
+      const point = path.getPointAtLength(distance);
+      const ahead = path.getPointAtLength(Math.min(length, distance + 8));
+      const behind = path.getPointAtLength(Math.max(0, distance - 8));
+      const angle = Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * (180 / Math.PI);
+      marker.setAttribute("transform", `translate(${point.x} ${point.y}) rotate(${angle})`);
       const next = stageFromProgress(drawn);
       setStage((current) => (current === next ? current : next));
     };
@@ -88,7 +108,10 @@ export function CinematicShowcase() {
 
     const resize = new ResizeObserver(() => ScrollTrigger.refresh());
     resize.observe(track);
-    requestAnimationFrame(() => ScrollTrigger.refresh());
+    requestAnimationFrame(() => {
+      place(0);
+      ScrollTrigger.refresh();
+    });
 
     return () => {
       resize.disconnect();
@@ -110,6 +133,7 @@ export function CinematicShowcase() {
   }
 
   const active = STAGES[stage] ?? STAGES[0];
+  const desktopStory = !narrow && !staticView;
 
   return (
     <section id="showcase" className="relative z-10" aria-labelledby="showcase-title">
@@ -117,9 +141,9 @@ export function CinematicShowcase() {
         <div className={cn(!staticView && "cine-sticky", "px-4 sm:px-8")}>
           <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="max-w-xl">
+              <div className={cn("max-w-xl", desktopStory && "ml-[8%]")}>
                 <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-signal">ABOS in motion</p>
-                <h2 id="showcase-title" className="mt-2 font-display text-title font-semibold text-harmattan">
+                <h2 id="showcase-title" className={cn("mt-2 font-display text-title font-semibold text-harmattan", desktopStory && "cine-title-link")}>
                   One business. One connected intelligence.
                 </h2>
               </div>
@@ -128,7 +152,13 @@ export function CinematicShowcase() {
               </p>
             </div>
 
-            <div className="cine-stage relative overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c]">
+            {desktopStory ? (
+              <svg className="cine-bridge -mt-4 h-8 w-full" viewBox="0 0 1000 32" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="80" y1="0" x2="80" y2="32" stroke="#6ee7b7" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+              </svg>
+            ) : null}
+
+            <div className={cn("cine-stage relative overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c]", desktopStory && "-mt-4")}>
               <div className="cine-grid absolute inset-0" aria-hidden="true" />
               <div className="cine-glow absolute inset-0" aria-hidden="true" />
               {narrow || staticView ? (
@@ -148,6 +178,7 @@ export function CinematicShowcase() {
                 <div className="relative z-[2] h-full min-h-[inherit]">
                   <svg viewBox="0 0 1000 520" className="h-full w-full" role="img" aria-labelledby={labelId}>
                     <title id={labelId}>Five-stage operating path</title>
+                    <line x1="80" y1="0" x2="80" y2="48" stroke="#6ee7b7" strokeWidth="2" />
                     <path d={PATH} fill="none" stroke="rgb(255 255 255 / 0.08)" strokeWidth="3" />
                     <path
                       ref={pathRef}
@@ -157,19 +188,56 @@ export function CinematicShowcase() {
                       strokeWidth="3"
                       strokeLinecap="round"
                     />
-                    <circle ref={markerRef} r="7" fill="#f8fffc" stroke="#6ee7b7" strokeWidth="3" />
+                    {anchors.map((point, index) => (
+                      <g key={STAGES[index]!.id}>
+                        {index === stage ? (
+                          <line
+                            x1={point.x}
+                            y1={point.y}
+                            x2={point.x + LABEL_OFFSET[index]!.dx}
+                            y2={point.y + LABEL_OFFSET[index]!.dy}
+                            stroke="rgb(248 255 252 / 0.55)"
+                            strokeWidth="1"
+                          />
+                        ) : null}
+                        {index === stage ? (
+                          <circle
+                            cx={point.x + LABEL_OFFSET[index]!.dx}
+                            cy={point.y + LABEL_OFFSET[index]!.dy}
+                            r="2.5"
+                            fill="#f8fffc"
+                          />
+                        ) : null}
+                        <circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={index === stage ? 6 : 3.5}
+                          fill={index === stage ? "#6ee7b7" : "#081014"}
+                          stroke={index === stage ? "#f8fffc" : "rgb(110 231 183 / 0.45)"}
+                          strokeWidth={index === stage ? 2 : 1.25}
+                        />
+                      </g>
+                    ))}
+                    <g ref={markerRef}>
+                      <path d="M -2 -5 L 12 0 L -2 5 Z" fill="#f8fffc" stroke="#06281c" strokeWidth="0.8" />
+                    </g>
                   </svg>
-                  <p
-                    className="pointer-events-none absolute left-[8%] top-[10%] max-w-[220px] rounded-2xl border border-white/10 bg-[#081014]/90 px-3 py-2 text-sm text-harmattan transition-opacity duration-300"
-                    style={{ opacity: stage === 0 ? 1 : 0.35 }}
-                  >
-                    <span className="block text-[10px] uppercase tracking-[0.16em] text-signal">{STAGES[0].name}</span>
-                    {STAGES[0].copy}
-                  </p>
+                  {anchors[stage] ? (
+                    <p
+                      key={active.id}
+                      className="cine-stage-pill pointer-events-none absolute z-[3] -translate-y-1/2 rounded-full border border-white/15 bg-[#081014]/92 px-3 py-1 text-[11px] text-harmattan"
+                      style={{
+                        left: `${((anchors[stage].x + LABEL_OFFSET[stage]!.dx) / 1000) * 100}%`,
+                        top: `${((anchors[stage].y + LABEL_OFFSET[stage]!.dy) / 520) * 100}%`,
+                      }}
+                    >
+                      {active.name}
+                    </p>
+                  ) : null}
                   <p className="sr-only" aria-live="polite">
                     Stage {stage + 1} of 5. {active.name}. {active.copy}
                   </p>
-                  <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-[#081014]/85 px-4 py-3 transition-opacity duration-300">
+                  <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-[#081014]/85 px-4 py-3">
                     <p className="text-[10px] uppercase tracking-[0.16em] text-signal">{active.name}</p>
                     <p className="mt-1 text-sm text-harmattan">{active.copy}</p>
                   </div>
@@ -177,13 +245,12 @@ export function CinematicShowcase() {
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Story stages">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Story stages">
               {STAGES.map((item, index) => (
                 <button
                   key={item.id}
                   type="button"
-                  role="tab"
-                  aria-selected={index === stage}
+                  aria-pressed={index === stage}
                   onClick={() => goTo(index)}
                   className={cn(
                     "min-h-11 rounded-full border px-3 text-xs",

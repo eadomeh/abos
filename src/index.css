@@ -1043,6 +1043,29 @@ html.abos-gsap .hero-intro {
   contain: layout paint;
 }
 
+.cine-title-link {
+  position: relative;
+}
+
+.cine-title-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.55rem;
+  width: 2.25rem;
+  height: 2px;
+  background: #6ee7b7;
+}
+
+.cine-stage-pill {
+  animation: cine-pill-in 300ms ease;
+}
+
+@keyframes cine-pill-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .cine-grid {
   background-image:
     linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),

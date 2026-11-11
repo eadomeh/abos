@@ -33,11 +33,17 @@ function lastPreview(thread: LiveThread): { text: string; time: string } {
   return { text: last.text, time: last.time };
 }
 
-function workflowFromVisible(count: number) {
-  if (count <= 1) return "Customer message is on screen.";
-  if (count === 2) return "A scripted catalog reply is on screen.";
-  if (count === 3) return "The customer has added a follow-up in this script.";
-  return "The visible script includes a reply. Nothing has been sent or booked.";
+function workflowFromVisible(messages: { side: string; product?: boolean }[]) {
+  const last = messages[messages.length - 1];
+  if (!last) return "No scripted line is visible yet.";
+  if (last.product) {
+    return "The last visible line is a scripted catalog reply. It is sample catalog context, not a live stock or price check.";
+  }
+  if (last.side === "customer") {
+    if (messages.length <= 1) return "The last visible line is a customer message in this script.";
+    return "The last visible line is a customer follow-up in this script. Nothing has been ordered, paid, delivered, or assigned.";
+  }
+  return "The last visible line is a scripted ABOS reply, not a catalog card. Nothing has been sent, booked, paid, or completed.";
 }
 
 export function ConversationsSection() {
@@ -158,7 +164,7 @@ export function ConversationsSection() {
       </div>
       <div>
         <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Visible in this script</p>
-        <p className="mt-1 text-xs leading-5 text-harmattan-muted">{workflowFromVisible(visible.length)}</p>
+        <p className="mt-1 text-xs leading-5 text-harmattan-muted">{workflowFromVisible(visible)}</p>
       </div>
       <p className="text-xs leading-5 text-harmattan-muted">
         A transfer screenshot is a payment claim, not settlement. An authorised teammate must verify payment before an order is marked paid. Product, price, stock and delivery statements must come from trusted business records.

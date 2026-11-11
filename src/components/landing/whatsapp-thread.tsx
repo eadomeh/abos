@@ -229,9 +229,8 @@ export function WhatsappThread() {
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 text-sm font-semibold text-wa-text">
                       <span className="truncate">{person.name}</span>
-                      <span className="size-1.5 shrink-0 rounded-full bg-signal" />
                     </p>
-                    <p className="truncate text-xs text-signal/80">online · scripted demo</p>
+                    <p className="truncate text-xs text-harmattan-muted">sample conversation</p>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center text-signal/80" aria-hidden="true">
