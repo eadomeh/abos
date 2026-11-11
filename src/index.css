@@ -1003,16 +1003,23 @@ html.abos-gsap .hero-intro {
 /* === ABOS CINEMATIC SHOWCASE === */
 .cine-track {
   position: relative;
-  height: auto;
+  height: 158svh;
 }
 
 .cine-track-static {
   height: auto;
 }
 
-@media (min-width: 900px) and (min-height: 561px) {
+@media (min-width: 1024px) and (min-height: 561px) {
   .cine-track:not(.cine-track-static) {
-    height: 190svh;
+    height: 182svh;
+  }
+}
+
+@media (max-height: 560px) {
+  .cine-track,
+  .cine-track:not(.cine-track-static) {
+    height: auto;
   }
 }
 
@@ -1028,14 +1035,23 @@ html.abos-gsap .hero-intro {
   padding-bottom: 12px;
 }
 
-@media (min-width: 900px) and (min-height: 561px) {
+@media (min-height: 561px) {
   .cine-track:not(.cine-track-static) .cine-sticky {
     height: calc(100svh - 76px);
     max-height: calc(100svh - 76px);
   }
 
   .cine-track:not(.cine-track-static) .cine-stage {
-    height: clamp(360px, 60svh, 600px);
+    width: min(100%, calc((100svh - 168px) * 0.82));
+    max-height: calc(100svh - 168px);
+  }
+}
+
+@media (min-width: 768px) and (min-height: 561px) {
+  .cine-track:not(.cine-track-static) .cine-stage {
+    width: min(100%, calc((100svh - 176px) * 16 / 9));
+    height: clamp(340px, 56svh, 580px);
+    max-height: calc(100svh - 176px);
   }
 }
 

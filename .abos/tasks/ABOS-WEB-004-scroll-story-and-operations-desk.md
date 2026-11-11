@@ -23,7 +23,16 @@
 - No merge to `main`. No production alias change. No Supabase, auth logic, or new dependencies.
 - Do not redesign hero, map, platform, Ask ABOS, How it Works, vision, CTA, or footer.
 
-## Correction still open for owner acceptance
+## Owner-directed restoration
+
+The five-stage path and three-pane Conversation Operations Desk were rejected.
+
+- In Action restored from `1f4deab3a42d30d83208af16f067cf33aec4645e` (original two-pane inbox).
+- ABOS in Motion restored from that same commit, then shortened: mobile track `158svh`, desktop track `182svh`.
+- The cursor starts on the exact label `ABOS in motion` inside the sticky stage, then travels into the original scene.
+- Ordinary phones keep the animated scene. Static chapters only for reduced motion or viewports shorter than 561px.
+- WhatsApp stays conversation-only. Business Brain is not restored.
+- Production `main` is not modified.
 
 - Desktop path uses one scroll progress for the arrow, five `getPointAtLength` anchors, the active label, and its leader.
 - Headline stem joins the existing path. Mobile stays a vertical list. Desktop track stays `190svh`.

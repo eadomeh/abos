@@ -18,7 +18,13 @@ Production `main` at check: `1139d93dc9cf374166659db1e920047461f2de0e`
 - `npm run lint`: exit 1, 26 errors and 1 warning. Same known baseline in `supabase/functions/*` and `auth-modal.tsx`. No new scoped landing errors.
 - `git diff --check`: pass after removing a trailing blank line.
 
-## Correction pass
+## Owner-directed restoration
+
+The path redesign and operations desk were rejected. In Action and the cinematic scene were restored from `1f4deab3a42d30d83208af16f067cf33aec4645e`.
+
+- Cursor anchor is the visible text `ABOS in motion`, measured against the sticky host, then the existing timeline travels into the original message, emblem, and module cards.
+- Track height is `158svh` by default and `182svh` from `1024px` when the viewport is taller than `560px`. Shorter viewports and reduced motion stay in normal flow with the poster and five readable chapters.
+- WhatsApp was not changed in this restoration.
 
 Started from `f9bc2bb17e3491e56ac65c7f3f45b773a993fdb6`.
 
