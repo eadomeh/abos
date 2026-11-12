@@ -1,59 +1,50 @@
-import { useEffect, useRef, useState } from "react";
+import { Pause, Play, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { AbosMark } from "@/components/landing/abos-mark";
 import { cn } from "@/lib/utils";
 
-gsap.registerPlugin(ScrollTrigger);
-
-const CHAPTERS = [
-  { id: "signal", label: "Signal", copy: "Illustrative customer messages arrive. The cursor identifies the incoming signal." },
-  { id: "intelligence", label: "Business intelligence", copy: "The ABOS emblem activates. Customer context, products, catalog and trusted knowledge connect." },
-  { id: "operations", label: "Operations", copy: "Inventory checks, orders, payment review and delivery handoff become connected." },
-  { id: "control", label: "Human control", copy: "Tasks, automations and team permissions appear. Sensitive activity remains pending approval." },
-  { id: "future", label: "Connected future", copy: "African business intelligence. Connected operations. Real execution." },
+const BEAT = 3.7;
+const SCENES = [
+  { id: "01", name: "Customer signal" },
+  { id: "02", name: "Customer 360" },
+  { id: "03", name: "Business intelligence" },
+  { id: "04", name: "Inventory and order" },
+  { id: "05", name: "Payment verification" },
+  { id: "06", name: "Delivery and handoff" },
+  { id: "07", name: "Command centre" },
 ] as const;
-
-function chapterFromProgress(progress: number) {
-  if (progress < 0.18) return 0;
-  if (progress < 0.38) return 1;
-  if (progress < 0.58) return 2;
-  if (progress < 0.78) return 3;
-  return 4;
-}
 
 function readReducedMotion() {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function readCompactViewport() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(max-height: 560px)").matches;
-}
-
-function ModuleCard({
-  id,
-  className,
+function Card({
   kicker,
   title,
   detail,
   status,
+  tone = "signal",
+  className,
 }: {
-  id: string;
-  className?: string;
   kicker: string;
   title: string;
   detail: string;
   status?: string;
+  tone?: "signal" | "amber";
+  className?: string;
 }) {
   return (
-    <div data-cine="card" data-cursor={id} className={cn("cine-glass w-[44%] max-w-[230px]", className)}>
-      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">{kicker}</p>
-      <p className="mt-1 font-display text-sm font-semibold tracking-normal text-harmattan">{title}</p>
+    <div data-cine="card" className={cn("cine-glass cine-inline", tone === "amber" && "border-amber-200/30", className)}>
+      <p className={cn("text-[10px] font-medium uppercase tracking-[0.16em]", tone === "amber" ? "text-amber" : "text-signal")}>{kicker}</p>
+      <p className="mt-1 font-display text-sm font-semibold leading-snug text-harmattan">{title}</p>
       <p className="mt-1 text-[11px] leading-snug text-harmattan-muted">{detail}</p>
       {status ? (
-        <p className="mt-2 inline-flex rounded-full border border-amber-200/30 bg-amber-200/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber">
+        <p className={cn(
+          "mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]",
+          tone === "amber" ? "border-amber-200/30 bg-amber-200/10 text-amber" : "border-white/10 bg-white/5 text-quiet",
+        )}>
           {status}
         </p>
       ) : null}
@@ -61,463 +52,258 @@ function ModuleCard({
   );
 }
 
+function SceneFrame({ index, children }: { index: number; children: ReactNode }) {
+  return (
+    <div data-cine="scene" data-scene={index} className="absolute inset-0 z-[2] px-3 pb-16 pt-12 md:px-6 md:pb-[4.5rem] md:pt-14">
+      <div className="mx-auto grid h-full max-w-5xl grid-cols-1 content-start gap-2 overflow-hidden sm:grid-cols-2 md:grid-cols-3 md:content-center md:gap-3">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function Poster() {
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" data-cine-poster>
       <div className="cine-grid absolute inset-0" aria-hidden="true" />
       <div className="cine-glow absolute inset-0" aria-hidden="true" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center">
         <AbosMark glow className="h-24 w-auto sm:h-32" title="" />
-        <p className="mt-5 max-w-md font-display text-lg font-semibold leading-snug text-harmattan sm:text-2xl">
-          African business intelligence. Connected operations. Real execution.
+        <p className="mt-4 max-w-md font-display text-lg font-semibold leading-snug text-harmattan sm:text-2xl">
+          One business. One connected intelligence.
         </p>
-      </div>
-      <div className="cine-glass bottom-[18%] left-[6%] hidden w-[200px] md:block">
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">Customers</p>
-        <p className="mt-1 font-display text-sm font-semibold text-harmattan">Context held</p>
-        <p className="mt-1 text-[11px] text-harmattan-muted">Who they are stays attached to the work.</p>
-      </div>
-      <div className="cine-glass bottom-[18%] right-[6%] hidden w-[200px] md:block">
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">Orders</p>
-        <p className="mt-1 font-display text-sm font-semibold text-harmattan">Work in view</p>
-        <p className="mt-1 text-[11px] text-harmattan-muted">Requests sit with the operation.</p>
-      </div>
-      <div className="cine-glass absolute bottom-[8%] left-1/2 w-[min(92%,320px)] -translate-x-1/2 border-amber-200/25">
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber">Human control</p>
-        <p className="mt-1 font-display text-sm font-semibold text-harmattan">Held for review</p>
-        <p className="mt-1 text-[11px] leading-snug text-harmattan-muted">Nothing sensitive executes before someone authorised approves it.</p>
+        <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-quiet">Illustrative demo data</p>
       </div>
     </div>
-  );
-}
-
-function CursorGraphic() {
-  return (
-    <div data-cine="cursor" className="cine-cursor" aria-hidden="true">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <path
-          d="M5 3.2 22.4 13.1c.8.45.62 1.64-.28 1.84l-6.7 1.5-1.7 6.55c-.22.86-1.38.96-1.76.16L5.2 4.7c-.28-.6.28-1.22.8-1.5Z"
-          fill="#f4fff9"
-          stroke="#06281c"
-          strokeWidth="1.2"
-        />
-        <path
-          d="M6.2 5.2 19.6 13.2l-5.5 1.22"
-          stroke="#6ee7b7"
-          strokeWidth="1.1"
-          strokeLinecap="round"
-        />
-      </svg>
-      <span data-cine="ripple" className="cine-ripple" />
-    </div>
-  );
-}
-
-function ChapterList() {
-  return (
-    <ol className="mx-auto mt-6 grid max-w-3xl gap-3 text-left">
-      {CHAPTERS.map((chapter, index) => (
-        <li key={chapter.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-signal">
-            Chapter {index + 1} · {chapter.label}
-          </p>
-          <p className="mt-1 text-sm leading-6 text-harmattan-muted">{chapter.copy}</p>
-        </li>
-      ))}
-    </ol>
   );
 }
 
 export function CinematicShowcase() {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const railFillRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const userPaused = useRef(false);
+  const inView = useRef(false);
   const [reduced, setReduced] = useState(readReducedMotion);
-  const [compact, setCompact] = useState(readCompactViewport);
-  const [chapter, setChapter] = useState(0);
-  const staticView = reduced || compact;
+  const [paused, setPaused] = useState(false);
+  const [sceneIndex, setSceneIndex] = useState(0);
 
   useEffect(() => {
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const height = window.matchMedia("(max-height: 560px)");
-    const sync = () => {
-      setReduced(motion.matches);
-      setCompact(height.matches);
-    };
-    sync();
-    motion.addEventListener("change", sync);
-    height.addEventListener("change", sync);
-    return () => {
-      motion.removeEventListener("change", sync);
-      height.removeEventListener("change", sync);
-    };
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(mq.matches);
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
     const stage = stageRef.current;
-    const track = trackRef.current;
-    const host = hostRef.current;
-    if (!stage || !track || !host || staticView) return;
+    if (!stage || reduced) return;
 
-    const q = (name: string) => stage.querySelectorAll<HTMLElement>(`[data-cine="${name}"]`);
-    const one = (name: string) => host.querySelector<HTMLElement>(`[data-cine="${name}"]`);
-    const cursorTarget = (id: string) => host.querySelector<HTMLElement>(`[data-cursor="${id}"]`);
-
-    const point = (id: string) => {
-      const el = cursorTarget(id);
-      const hr = host.getBoundingClientRect();
-      if (!el || hr.width < 8) return { x: 24, y: 24 };
-      const tr = el.getBoundingClientRect();
-      return {
-        x: tr.left - hr.left + Math.min(tr.width * 0.72, 28),
-        y: tr.top - hr.top + Math.min(22, tr.height * 0.45),
-      };
-    };
+    const scenes = SCENES.map((_, index) => stage.querySelector<HTMLElement>(`[data-scene="${index}"]`));
+    const cards = stage.querySelectorAll<HTMLElement>("[data-cine='card']");
+    const emblem = stage.querySelector<HTMLElement>("[data-cine='emblem']");
+    const halo = stage.querySelector<HTMLElement>("[data-cine='halo']");
+    const progress = stage.querySelector<HTMLElement>("[data-cine='progress']");
+    const sweep = stage.querySelector<HTMLElement>("[data-cine='sweep']");
 
     const ctx = gsap.context(() => {
-      const messages = q("message");
-      const cards = q("card");
-      const emblem = one("emblem");
-      const halo = one("halo");
-      const approval = one("approval");
-      const statement = one("statement");
-      const analytics = cursorTarget("analytics");
-      const cursor = one("cursor");
-      const ripple = one("ripple");
-      const wire = one("wire");
-      const progress = one("progress");
-      const wireState = { x2: 0, y2: 0 };
-
-      gsap.set([messages, cards, emblem, halo, approval, statement, analytics, cursor, ripple], { autoAlpha: 0 });
-      gsap.set(messages, { y: 10 });
-      gsap.set(cards, { y: 12, scale: 0.98 });
-      gsap.set(emblem, { scale: 0.9 });
-      gsap.set(approval, { y: 10 });
-      gsap.set(statement, { y: 8 });
-      gsap.set(cursor, {
-        x: () => point("motion-title").x,
-        y: () => point("motion-title").y,
-        autoAlpha: 1,
-      });
+      gsap.set(scenes, { autoAlpha: 0 });
+      gsap.set(cards, { autoAlpha: 0, y: 12 });
+      gsap.set(emblem, { autoAlpha: 0, scale: 0.9 });
       if (progress) gsap.set(progress, { scaleX: 0, transformOrigin: "left center" });
-      stage.setAttribute("data-ready", "true");
+      if (sweep) gsap.set(sweep, { autoAlpha: 0, xPercent: -20 });
 
       const tl = gsap.timeline({
         paused: true,
+        repeat: -1,
+        repeatDelay: 0.45,
         defaults: { ease: "power2.out" },
       });
 
-      const mark = (id: string, on: boolean) => {
-        const target = cursorTarget(id);
-        if (!target) return;
-        if (on) target.setAttribute("data-hot", "true");
-        else target.removeAttribute("data-hot");
-      };
+      tl.to(emblem, { autoAlpha: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 0);
+      if (halo) tl.to(halo, { autoAlpha: 1, duration: 0.5 }, 0);
+      if (sweep) tl.to(sweep, { autoAlpha: 0.45, xPercent: 160, duration: BEAT * SCENES.length, ease: "none" }, 0);
+      if (progress) tl.fromTo(progress, { scaleX: 0 }, { scaleX: 1, duration: BEAT * SCENES.length, ease: "none" }, 0);
 
-      const travel = (id: string, at: number, duration = 0.28) => {
-        tl.to(cursor, {
-          autoAlpha: 1,
-          x: () => point(id).x,
-          y: () => point(id).y,
-          duration,
-          ease: "power3.inOut",
-        }, at);
-      };
-
-      const click = (id: string, at: number) => {
-        tl.call(() => mark(id, true), undefined, at);
-        tl.fromTo(ripple, { autoAlpha: 0.85, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.28, ease: "power2.out" }, at);
-        tl.call(() => mark(id, false), undefined, at + 0.42);
-      };
-
-      const drawWire = (from: string, to: string, at: number) => {
-        if (!wire) return;
-        tl.call(() => {
-          const a = point(from);
-          wireState.x2 = a.x;
-          wireState.y2 = a.y;
-          wire.setAttribute("x1", String(a.x));
-          wire.setAttribute("y1", String(a.y));
-          wire.setAttribute("x2", String(a.x));
-          wire.setAttribute("y2", String(a.y));
-          gsap.set(wire, { autoAlpha: 1 });
-        }, undefined, at);
-        tl.to(wireState, {
-          x2: () => point(to).x,
-          y2: () => point(to).y,
-          duration: 0.22,
-          ease: "power2.out",
-          onUpdate: () => {
-            wire.setAttribute("x2", String(wireState.x2));
-            wire.setAttribute("y2", String(wireState.y2));
-          },
-        }, at);
-      };
-
-      tl.set(cursor, { autoAlpha: 1 }, 0);
-      travel("motion-title", 0, 0.04);
-      tl.to(messages, { autoAlpha: 1, y: 0, duration: 0.22, stagger: 0.04 }, 0.1);
-      travel("signal", 0.16, 0.28);
-      click("signal", 0.46);
-
-      tl.to(halo, { autoAlpha: 1, duration: 0.18 }, 0.55);
-      tl.to(emblem, { autoAlpha: 1, scale: 1, duration: 0.24, ease: "power3.out" }, 0.58);
-      travel("emblem", 0.5, 0.2);
-      click("emblem", 0.72);
-      tl.to(messages, { autoAlpha: 0, duration: 0.16 }, 0.74);
-
-      tl.to(cursorTarget("customers"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.2 }, 0.82);
-      travel("customers", 0.84, 0.18);
-      click("customers", 1.02);
-      drawWire("emblem", "customers", 1.02);
-
-      tl.to(cursorTarget("products"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.2 }, 1.18);
-      travel("products", 1.2, 0.18);
-      click("products", 1.38);
-      drawWire("emblem", "products", 1.38);
-
-      tl.to(cursorTarget("knowledge"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.2 }, 1.54);
-      tl.to([cursorTarget("customers")], { autoAlpha: 0.28, duration: 0.14 }, 1.56);
-      travel("knowledge", 1.56, 0.16);
-      click("knowledge", 1.74);
-
-      tl.to(cursorTarget("inventory"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.18 }, 1.92);
-      tl.to(cursorTarget("products"), { autoAlpha: 0.28, duration: 0.12 }, 1.94);
-      travel("inventory", 1.94, 0.16);
-      click("inventory", 2.1);
-      drawWire("emblem", "inventory", 2.1);
-
-      tl.to(cursorTarget("orders"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.18 }, 2.26);
-      tl.to(cursorTarget("knowledge"), { autoAlpha: 0.22, duration: 0.12 }, 2.28);
-      travel("orders", 2.28, 0.16);
-      click("orders", 2.44);
-      drawWire("emblem", "orders", 2.44);
-
-      tl.to(cursorTarget("delivery"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.18 }, 2.6);
-      tl.to(cursorTarget("inventory"), { autoAlpha: 0.22, duration: 0.12 }, 2.62);
-      travel("delivery", 2.62, 0.16);
-      click("delivery", 2.78);
-      drawWire("emblem", "delivery", 2.78);
-
-      tl.to(cursorTarget("tasks"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.18 }, 3.02);
-      tl.to([cursorTarget("orders"), cursorTarget("delivery")], { autoAlpha: 0.2, duration: 0.12 }, 3.04);
-      travel("tasks", 3.04, 0.16);
-      click("tasks", 3.2);
-      drawWire("emblem", "tasks", 3.2);
-
-      tl.to(cursorTarget("team"), { autoAlpha: 1, y: 0, scale: 1, duration: 0.18 }, 3.36);
-      travel("team", 3.38, 0.16);
-      click("team", 3.54);
-      drawWire("emblem", "team", 3.54);
-
-      tl.to([emblem, halo], { autoAlpha: 0.15, duration: 0.16 }, 3.74);
-      tl.to(approval, { autoAlpha: 1, y: 0, duration: 0.2 }, 3.76);
-      tl.to(cards, { autoAlpha: 0.12, duration: 0.14 }, 3.78);
-      travel("approval", 3.78, 0.18);
-      click("approval", 3.96);
-
-      tl.to([cards, approval, wire], { autoAlpha: 0, duration: 0.2 }, 4.3);
-      tl.to([emblem, halo], { autoAlpha: 1, duration: 0.2 }, 4.34);
-      tl.to(emblem, { scale: 1.04, duration: 0.24 }, 4.38);
-      tl.to(analytics, { autoAlpha: 1, y: 0, scale: 1, duration: 0.18 }, 4.56);
-      travel("analytics", 4.58, 0.18);
-      click("analytics", 4.76);
-      tl.to(analytics, { autoAlpha: 0, duration: 0.16 }, 5.05);
-      tl.to(statement, { autoAlpha: 1, y: 0, duration: 0.22 }, 5.12);
-      travel("finale", 5.2, 0.2);
-
-      ScrollTrigger.create({
-        trigger: track,
-        start: "top top+=64",
-        end: "bottom bottom",
-        scrub: 0.45,
-        animation: tl,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          const next = chapterFromProgress(self.progress);
-          setChapter((current) => (current === next ? current : next));
-          if (progress) gsap.set(progress, { scaleX: self.progress });
-          if (railFillRef.current) railFillRef.current.style.transform = `scaleX(${self.progress})`;
-        },
+      scenes.forEach((scene, index) => {
+        if (!scene) return;
+        const start = index * BEAT;
+        const sceneCards = scene.querySelectorAll<HTMLElement>("[data-cine='card']");
+        tl.call(() => setSceneIndex(index), undefined, start);
+        tl.to(scene, { autoAlpha: 1, duration: 0.35 }, start);
+        tl.to(sceneCards, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.06 }, start + 0.08);
+        tl.to(scene, { autoAlpha: 0, duration: 0.3 }, start + BEAT - 0.32);
+        tl.set(sceneCards, { autoAlpha: 0, y: 12 }, start + BEAT - 0.02);
       });
-    }, host);
 
-    const refresh = () => ScrollTrigger.refresh();
-    const resize = new ResizeObserver(refresh);
-    resize.observe(stage);
-    requestAnimationFrame(refresh);
+      if (halo) {
+        gsap.to(halo, { scale: 1.06, duration: 1.8, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      }
+
+      timelineRef.current = tl;
+    }, stage);
+
+    const syncPlayback = () => {
+      const tl = timelineRef.current;
+      if (!tl) return;
+      const shouldPlay = inView.current && document.visibilityState === "visible" && !userPaused.current;
+      if (shouldPlay) tl.play();
+      else tl.pause();
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        inView.current = !!entry?.isIntersecting;
+        syncPlayback();
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(stage);
+    document.addEventListener("visibilitychange", syncPlayback);
 
     return () => {
-      resize.disconnect();
-      stage.removeAttribute("data-ready");
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", syncPlayback);
       ctx.revert();
+      timelineRef.current = null;
     };
-  }, [staticView]);
+  }, [reduced]);
 
-  const active = CHAPTERS[chapter] ?? CHAPTERS[0];
+  const togglePause = () => {
+    userPaused.current = !userPaused.current;
+    setPaused(userPaused.current);
+    const tl = timelineRef.current;
+    if (!tl) return;
+    if (userPaused.current) tl.pause();
+    else if (inView.current && document.visibilityState === "visible") tl.play();
+  };
+
+  const replay = () => {
+    const tl = timelineRef.current;
+    if (!tl) return;
+    userPaused.current = false;
+    setPaused(false);
+    tl.restart();
+    if (!inView.current || document.visibilityState !== "visible") tl.pause();
+  };
+
+  const active = SCENES[sceneIndex] ?? SCENES[0];
 
   return (
-    <section id="showcase" className="relative z-10" aria-labelledby="showcase-title">
-      <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-8 sm:pt-10">
-        <div className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-quiet">Product preview</p>
-          <h2 id="showcase-title" className="mt-3 font-display text-title font-semibold text-harmattan">
-            One business. One connected intelligence.
-          </h2>
-          <p className="mt-3 text-sm text-harmattan-muted sm:text-base">
-            Illustrative product preview. Not live traffic, stock, or payment activity.
-          </p>
-        </div>
+    <section id="showcase" className="relative z-10 mx-auto max-w-[1440px] px-4 py-6 sm:px-8 sm:py-10" aria-labelledby="showcase-title">
+      <div className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
+        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-signal">ABOS in motion</p>
+        <h2 id="showcase-title" className="mt-3 font-display text-title font-semibold text-harmattan">
+          One business. One connected intelligence.
+        </h2>
+        <p className="mt-3 text-sm text-harmattan-muted sm:text-base">
+          Illustrative product preview. Not live traffic, stock, or payment activity.
+        </p>
       </div>
 
-      {staticView ? (
-        <div className="mx-auto max-w-[1440px] px-4 pb-10 sm:px-8">
-          <div className="cine-stage relative mx-auto aspect-[4/5] w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] md:aspect-video">
-            <Poster />
-            <p className="pointer-events-none absolute left-3 top-3 z-[4] rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-harmattan-muted">
-              Illustrative product preview
+      <div
+        ref={stageRef}
+        className="cine-stage relative mx-auto aspect-[4/5] w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)] md:aspect-video"
+      >
+        <div className="cine-grid absolute inset-0" aria-hidden="true" />
+        <div className="cine-glow absolute inset-0" aria-hidden="true" />
+        <div data-cine="sweep" className="cine-sweep" aria-hidden="true" />
+        <div data-cine="halo" className="cine-halo" aria-hidden="true" />
+        <div className="pointer-events-none absolute left-1/2 top-[18%] z-[1] -translate-x-1/2 md:top-1/2 md:-translate-y-1/2">
+          <div data-cine="emblem">
+            <AbosMark glow className="h-16 w-auto sm:h-20 md:h-28" title="" />
+          </div>
+        </div>
+
+        {reduced ? (
+          <Poster />
+        ) : (
+          <>
+            <SceneFrame index={0}>
+              <Card kicker="WhatsApp" title="New enquiry" detail="Hi, is this available in black? Can you deliver to Ikeja?" />
+              <Card kicker="Customer" title="Adaeze Okafor" detail="Conversation stays attached to this customer." className="hidden sm:block" />
+              <Card kicker="Context" title="Signal captured" detail="ABOS keeps the person on the thread. Nothing is confirmed yet." status="Enquiry received" />
+            </SceneFrame>
+            <SceneFrame index={1}>
+              <Card kicker="Profile" title="Customer 360" detail="Prior thread: asked about the same item last week." />
+              <Card kicker="Catalogue" title="Matching product" detail="Black variant is the record on file. Availability is not assumed." />
+              <Card kicker="Next action" title="Check, then answer" detail="Intent is product plus Ikeja delivery. A person still confirms both." className="hidden sm:block" />
+            </SceneFrame>
+            <SceneFrame index={2}>
+              <Card kicker="Grounded reply" title="Suggested response" detail="I found the matching catalogue item. I'm checking current availability and delivery options before I confirm." />
+              <Card kicker="Sources" title="Saved business information" detail="Customer context, catalogue, approved knowledge, and operating rules." status="Not invented" />
+              <Card kicker="Boundary" title="No guessed promises" detail="Stock, price, policy, and delivery are not filled in by the model." className="hidden md:block" />
+            </SceneFrame>
+            <SceneFrame index={3}>
+              <Card kicker="Product match" title="Black variant" detail="The catalogue row is linked. Stock is still a check." status="Stock check required" />
+              <Card kicker="Order" title="Draft only" detail="The request can sit as a draft. It is not a confirmed order." status="Order draft" />
+              <Card kicker="Lifecycle" title="Awaiting confirmation" detail="Nothing moves to confirmed until an authorised step says so." status="Awaiting confirmation" className="hidden sm:block" />
+            </SceneFrame>
+            <SceneFrame index={4}>
+              <Card kicker="Payment" title="Transfer claim" detail="A customer says they sent money. That claim is not settlement." tone="amber" status="Transfer claim — pending verification" />
+              <Card kicker="Human review" title="Held for an authorised person" detail="Manual transfers stay pending until someone authorised verifies them." tone="amber" status="Not settled" />
+              <Card kicker="Boundary" title="No false success" detail="A screenshot does not flip this record to paid." tone="amber" className="hidden md:block" />
+            </SceneFrame>
+            <SceneFrame index={5}>
+              <Card kicker="Delivery" title="Preparation" detail="Handoff is required. No delivery time is promised." status="Delivery not confirmed" />
+              <Card kicker="Task" title="Assigned follow-up" detail="An owner or agent can take the next step. It does not run itself." status="Task assigned" />
+              <Card kicker="Team" title="Role gate" detail="Escalation stays with someone who is allowed to act." status="Handoff required" className="hidden sm:block" />
+            </SceneFrame>
+            <SceneFrame index={6}>
+              <Card kicker="Customers" title="Conversations" detail="The thread remains the source of the request." />
+              <Card kicker="Knowledge" title="Rules on file" detail="Approved knowledge is what the reply may use." className="hidden sm:block" />
+              <Card kicker="Commerce" title="Products, orders, payments" detail="Catalogue, draft order, and unverified transfer stay distinct." />
+              <Card kicker="Operations" title="Delivery, tasks, team" detail="Handoff, assignment, and permissions sit on one surface." className="hidden md:block" />
+              <Card kicker="Analytics" title="Operating picture" detail="Sample chart only. Not live ABOS activity." status="Illustrative demo data" />
+              <div data-cine="card" className="cine-glass cine-inline">
+                <p className="font-display text-base font-semibold text-harmattan">One business. One connected intelligence.</p>
+                <p className="mt-1 text-[11px] text-harmattan-muted">Customers, knowledge, commerce, delivery, team, tasks, and analytics on one system.</p>
+              </div>
+            </SceneFrame>
+          </>
+        )}
+
+        <p className="pointer-events-none absolute left-3 top-3 z-[4] rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-harmattan-muted">
+          Illustrative product preview
+        </p>
+
+        {reduced ? null : (
+          <>
+            <p className="absolute right-3 top-3 z-[4] rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-harmattan">
+              <span className="sr-only">Scene </span>
+              {active.id} / 07 — {active.name}
             </p>
-          </div>
-          <ChapterList />
-        </div>
-      ) : (
-        <div ref={trackRef} className="cine-track">
-          <div ref={hostRef} className="cine-sticky relative px-4 sm:px-8">
-            <div className="mb-2 flex items-end justify-between gap-4 lg:mb-3">
-              <div className="min-w-0 flex-1 text-center lg:text-left">
-                <div className="cine-signal-line mx-auto mb-2 hidden lg:mx-0 lg:block" aria-hidden="true" />
-                <p data-cursor="motion-title" className="text-[11px] font-medium uppercase tracking-[0.22em] text-signal lg:text-xs">
-                  ABOS in motion
-                </p>
-                <p className="mx-auto mt-1 hidden max-w-md text-sm leading-snug text-harmattan-muted lg:mx-0 lg:block">
-                  From the first customer signal to connected business execution.
-                </p>
-              </div>
-              <p className="hidden shrink-0 pb-0.5 text-[11px] uppercase tracking-[0.16em] text-quiet lg:block">
-                {String(chapter + 1).padStart(2, "0")} / 05 — {active.label}
-              </p>
-            </div>
-            <div
-              ref={stageRef}
-              className="cine-stage cine-live relative mx-auto aspect-[4/5] w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)] md:aspect-video"
-            >
-              <div className="cine-grid absolute inset-0" aria-hidden="true" />
-              <div className="cine-glow absolute inset-0" aria-hidden="true" />
-              <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full" aria-hidden="true">
-                <line data-cine="wire" x1="0" y1="0" x2="0" y2="0" stroke="rgba(110,231,183,0.8)" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-
-              <div data-cine="message" data-cursor="signal" className="cine-glass left-[4%] top-[7%] w-[58%] max-w-[230px] md:left-[6%] md:top-[10%] md:w-[220px]">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Illustrative message</p>
-                <p className="mt-1 text-xs leading-snug text-harmattan md:text-sm">Can you still help me with this order?</p>
-              </div>
-              <div data-cine="message" className="cine-glass right-[4%] top-[7%] hidden w-[220px] md:block">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Illustrative message</p>
-                <p className="mt-1 text-sm leading-snug text-harmattan">Is delivery open this week?</p>
-              </div>
-
-              <div data-cine="halo" className="cine-halo" aria-hidden="true" />
-              <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 md:top-1/2">
-                <div data-cine="emblem" data-cursor="emblem">
-                  <AbosMark glow className="h-20 w-auto sm:h-24 md:h-32" title="" />
-                </div>
-              </div>
-
-              <ModuleCard id="customers" className="left-[4%] top-[16%] md:left-[4%] md:top-[12%] md:w-[220px]" kicker="Customers and leads" title="Shared context" detail="The person stays attached to the thread." />
-              <ModuleCard id="products" className="right-[4%] top-[16%] md:right-[4%] md:top-[12%] md:w-[220px]" kicker="Products and catalog" title="What they mean" detail="The offer stays next to the question." />
-              <ModuleCard id="knowledge" className="left-[4%] top-[38%] md:left-[4%] md:top-[38%] md:w-[230px]" kicker="AI rules and knowledge" title="What ABOS can use" detail="Prior context is available, not guessed." />
-              <ModuleCard id="inventory" className="right-[4%] top-[38%] md:right-[4%] md:top-[38%] md:w-[220px]" kicker="Inventory" title="Catalog context" detail="A check is required before anyone treats stock as fact." status="Check required" />
-              <ModuleCard id="orders" className="left-[4%] top-[16%] md:left-[4%] md:top-[12%] md:w-[230px]" kicker="Orders and payments" title="Pending verification" detail="Payment stays unverified until a person confirms it." status="Pending human verification" />
-              <ModuleCard id="delivery" className="right-[4%] top-[16%] md:right-[4%] md:top-[12%] md:w-[220px]" kicker="Delivery and handoff" title="Not confirmed" detail="Handoff waits for confirmation." status="Awaiting confirmation" />
-              <ModuleCard id="tasks" className="left-[4%] top-[38%] md:left-[4%] md:top-[38%] md:w-[230px]" kicker="Tasks and automations" title="Work queued" detail="A step can be prepared. It does not run itself past a hold." />
-              <ModuleCard id="team" className="right-[4%] top-[38%] md:right-[4%] md:top-[38%] md:w-[230px]" kicker="Team and permissions" title="Owner, Admin, Agent, Viewer" detail="Roles decide who may review a sensitive step." />
-
-              <div className="absolute left-1/2 top-[14%] z-[3] w-[min(88%,360px)] -translate-x-1/2 md:top-[12%]">
-                <div data-cine="approval" data-cursor="approval" className="cine-glass cine-inline w-full border-amber-200/30 bg-[#10160f]">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-amber">Human control</p>
-                  <p className="mt-1 font-display text-base font-semibold text-harmattan">Awaiting approval</p>
-                  <p className="mt-1 text-xs leading-snug text-harmattan">A sensitive action is held. It has not been executed.</p>
-                  <p className="mt-2 inline-flex rounded-full border border-amber-200/30 bg-amber-200/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-amber">Not executed</p>
-                </div>
-              </div>
-
-              <div className="absolute left-[4%] top-[16%] w-[min(78%,280px)] md:left-1/2 md:top-[14%] md:w-[280px] md:-translate-x-1/2">
-                <div data-cursor="analytics" data-cine="card" className="cine-glass cine-inline w-full">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-signal">Analytics</p>
-                  <p className="mt-1 font-display text-sm font-semibold text-harmattan">Business insights</p>
-                  <p className="mt-1 text-[11px] text-harmattan-muted">The operating picture comes together. No live totals are shown here.</p>
-                </div>
-              </div>
-
-              <div data-cine="statement" data-cursor="finale" className="pointer-events-none absolute inset-x-0 bottom-[18%] px-6 text-center">
-                <p className="mx-auto max-w-xl font-display text-lg font-semibold leading-snug text-harmattan sm:text-2xl">
-                  African business intelligence. Connected operations. Real execution.
-                </p>
-              </div>
-              <div data-cine="progress" className="absolute inset-x-0 bottom-0 z-[2] h-[2px] origin-left bg-signal/70" aria-hidden="true" />
-
-              <p className="pointer-events-none absolute left-3 top-3 z-[4] rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-harmattan-muted">
-                Illustrative product preview
-              </p>
-              <div className="absolute bottom-3 left-3 right-3 z-30 flex items-end justify-between gap-3">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-quiet">Scroll to explore</p>
-                <div className="min-w-0 text-right">
-                  <p className="sr-only" aria-live="polite">
-                    Chapter {chapter + 1} of 5. {active.label}. {active.copy}
-                  </p>
-                  <p className="truncate text-[10px] uppercase tracking-[0.14em] text-harmattan" aria-hidden="true">
-                    {chapter + 1}/5 · {active.label}
-                  </p>
-                  <div className="mt-1 flex justify-end gap-1" aria-hidden="true">
-                    {CHAPTERS.map((item, index) => (
-                      <span
-                        key={item.id}
-                        className={cn("h-1 w-4 rounded-full", index <= chapter ? "bg-signal" : "bg-white/15")}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <ol className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 lg:hidden" aria-hidden="true">
-              {CHAPTERS.map((item, index) => (
-                <li
+            <div className="absolute inset-x-0 bottom-14 z-[4] flex justify-center gap-1.5 px-4" aria-hidden="true">
+              {SCENES.map((item, index) => (
+                <span
                   key={item.id}
-                  className={cn(
-                    "text-[10px] uppercase tracking-[0.12em]",
-                    index === chapter ? "text-signal" : "text-quiet",
-                  )}
-                >
-                  {item.label}
-                </li>
+                  className={cn("h-1 flex-1 max-w-10 rounded-full", index <= sceneIndex ? "bg-signal" : "bg-white/15")}
+                />
               ))}
-            </ol>
-            <div className="cine-rail relative mt-3 hidden lg:block" aria-hidden="true">
-              <div className="cine-rail-line">
-                <div ref={railFillRef} className="cine-rail-fill" />
-              </div>
-              <ol className="cine-rail-nodes">
-                {CHAPTERS.map((item, index) => (
-                  <li
-                    key={item.id}
-                    className={cn(
-                      "cine-rail-node",
-                      index === chapter && "is-active",
-                      index < chapter && "is-done",
-                    )}
-                  >
-                    <span className="cine-rail-dot" />
-                    <span className="cine-rail-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="cine-rail-label">{item.label}</span>
-                  </li>
-                ))}
-              </ol>
             </div>
-            <CursorGraphic />
-          </div>
-        </div>
-      )}
+            <div data-cine="progress" className="absolute inset-x-0 bottom-0 z-[3] h-[2px] origin-left bg-signal/80" aria-hidden="true" />
+            <div className="absolute bottom-3 right-3 z-[5] flex items-center gap-2">
+              <span className="sr-only" aria-live="polite">{active.name}</span>
+              <button
+                type="button"
+                onClick={togglePause}
+                aria-pressed={paused}
+                aria-label={paused ? "Play product preview" : "Pause product preview"}
+                className="grid size-10 place-items-center rounded-full border border-white/15 bg-black/55 text-harmattan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ee7b7]"
+              >
+                {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={replay}
+                aria-label="Replay product preview"
+                className="grid size-10 place-items-center rounded-full border border-white/15 bg-black/55 text-harmattan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ee7b7]"
+              >
+                <RotateCcw className="size-4" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </section>
   );
 }
