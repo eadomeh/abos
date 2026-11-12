@@ -1116,5 +1116,38 @@ html.abos-gsap .hero-intro {
   border-color: rgb(110 231 183 / 0.75);
   box-shadow:
     0 0 0 1px rgb(110 231 183 / 0.35),
+    0 0 22px -8px rgb(110 231 183 / 0.85),
     0 18px 40px -28px rgb(0 0 0 / 0.85);
+}
+
+.cine-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgb(110 231 183 / 0.7));
+}
+
+.cine-ripple {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1.5px solid #6ee7b7;
+  pointer-events: none;
+}
+
+.cine-compact {
+  padding: 8px 10px;
+}
+
+@media (min-width: 768px) {
+  .cine-compact {
+    padding: 12px 14px;
+  }
 }
