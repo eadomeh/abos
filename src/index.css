@@ -1142,12 +1142,24 @@ html.abos-gsap .hero-intro {
   pointer-events: none;
 }
 
-.cine-compact {
-  padding: 8px 10px;
+.cine-float {
+  position: absolute;
+  z-index: 2;
+  width: min(42%, 156px);
+  padding: 6px 7px;
+  pointer-events: none;
 }
 
-@media (min-width: 768px) {
-  .cine-compact {
+@media (min-width: 640px) {
+  .cine-float {
+    width: min(34%, 220px);
+    padding: 10px 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .cine-float {
+    width: min(24%, 250px);
     padding: 12px 14px;
   }
 }
