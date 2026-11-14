@@ -1145,10 +1145,10 @@ html.abos-gsap .hero-intro {
 
 .cine-ripple {
   position: absolute;
-  left: 58%;
-  top: 28%;
-  width: 14px;
-  height: 14px;
+  left: calc(91.67% - 8px);
+  top: calc(50% - 8px);
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   border: 1.5px solid #6ee7b7;
   pointer-events: none;

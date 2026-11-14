@@ -65,7 +65,7 @@ function FloatCard({
       className={cn("cine-glass cine-float", slot && `cine-slot-${slot}`, tone === "amber" && "border-amber-200/35", className)}
     >
       <p className={cn("text-[9px] font-medium uppercase tracking-[0.14em] md:text-[10px]", tone === "amber" ? "text-amber" : "text-signal")}>{kicker}</p>
-      <p className="mt-0.5 font-display text-[12px] font-semibold leading-snug text-harmattan md:text-sm">{title}</p>
+      <p data-cine="tap-target" className="mt-0.5 font-display text-[12px] font-semibold leading-snug text-harmattan md:text-sm">{title}</p>
       {detail ? <p className="mt-0.5 text-[11px] leading-snug text-harmattan-muted md:text-[11px]">{detail}</p> : null}
       {status ? (
         <p className={cn(
@@ -180,46 +180,41 @@ export function CinematicShowcase() {
       return { x: tr.left - sr.left + tr.width / 2, y: tr.top - sr.top + tr.height / 2 };
     };
 
-    const cardAnchor = (el: HTMLElement) => {
+    const featureTapPoint = (id: string) => {
+      const card = targetEl(id);
+      const title = card?.querySelector<HTMLElement>('[data-cine="tap-target"]');
+      if (!card || !title) return null;
       const sr = stage.getBoundingClientRect();
-      const tr = el.getBoundingClientRect();
+      const tr = title.getBoundingClientRect();
+      if (tr.width < 4 || tr.height < 4) return null;
       const left = tr.left - sr.left;
       const top = tr.top - sr.top;
-      const cx = left + tr.width / 2;
-      const cy = top + tr.height / 2;
-      const e = emblemPoint();
-      const vx = e.x - cx;
-      const vy = e.y - cy;
-      const hx = Math.max(tr.width / 2, 1);
-      const hy = Math.max(tr.height / 2, 1);
-      const tx = Math.abs(vx) < 0.001 ? Infinity : hx / Math.abs(vx);
-      const ty = Math.abs(vy) < 0.001 ? Infinity : hy / Math.abs(vy);
-      const t = Math.min(tx, ty);
-      const bx = cx + vx * t;
-      const by = cy + vy * t;
-      const len = Math.hypot(vx, vy) || 1;
-      return { x: bx + (vx / len) * 5, y: by + (vy / len) * 5 };
+      const right = left + tr.width;
+      const bottom = top + tr.height;
+      const from = emblemPoint();
+      const edgeX = Math.min(right - 3, Math.max(left + 3, from.x));
+      const edgeY = Math.min(bottom - 2, Math.max(top + 2, from.y));
+      const midX = (left + right) / 2;
+      const midY = (top + bottom) / 2;
+      const dx = midX - edgeX;
+      const dy = midY - edgeY;
+      const len = Math.hypot(dx, dy) || 1;
+      const step = Math.min(7, len);
+      return { x: edgeX + (dx / len) * step, y: edgeY + (dy / len) * step };
     };
 
-    const aim = (id: string) => {
-      const el = targetEl(id);
-      const dest = el ? cardAnchor(el) : { x: 40, y: 40 };
-      const e = emblemPoint();
-      return { dest, rotation: (Math.atan2(dest.y - e.y, dest.x - e.x) * 180) / Math.PI };
-    };
+    const tipOrigin = `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%`;
 
     const wrapperFor = (id: string) => {
-      const { dest } = aim(id);
-      const box = cursor?.getBoundingClientRect();
-      const w = box && box.width > 4 ? box.width : 36;
-      const h = box && box.height > 4 ? box.height : 36;
-      const ox = w * (TIP_VB.x / VB);
-      const oy = h * (TIP_VB.y / VB);
-      const sr = stage.getBoundingClientRect();
+      const dest = featureTapPoint(id);
+      if (!dest || !cursor) return null;
+      const w = cursor.clientWidth || 34;
+      const h = cursor.clientHeight || 34;
+      const from = emblemPoint();
       return {
-        x: Math.max(-ox, Math.min(sr.width - 4, dest.x - ox)),
-        y: Math.max(-oy, Math.min(sr.height - 4, dest.y - oy)),
-        rotation: aim(id).rotation,
+        x: dest.x - w * (TIP_VB.x / VB),
+        y: dest.y - h * (TIP_VB.y / VB),
+        rotation: (Math.atan2(dest.y - from.y, dest.x - from.x) * 180) / Math.PI,
       };
     };
 
@@ -227,14 +222,12 @@ export function CinematicShowcase() {
       const svg = cursor?.querySelector("svg");
       const sr = stage.getBoundingClientRect();
       const ctm = svg?.getScreenCTM();
-      if (svg && ctm) {
-        const point = svg.createSVGPoint();
-        point.x = TIP_VB.x;
-        point.y = TIP_VB.y;
-        const screen = point.matrixTransform(ctm);
-        return { x: screen.x - sr.left, y: screen.y - sr.top };
-      }
-      return { x: 24, y: 24 };
+      if (!svg || !ctm) return null;
+      const point = svg.createSVGPoint();
+      point.x = TIP_VB.x;
+      point.y = TIP_VB.y;
+      const screen = point.matrixTransform(ctm);
+      return { x: screen.x - sr.left, y: screen.y - sr.top };
     };
 
     const emblemEdge = (tip: { x: number; y: number }) => {
@@ -253,6 +246,11 @@ export function CinematicShowcase() {
     const syncWire = () => {
       if (!wire) return;
       const tip = arrowhead();
+      if (!tip) {
+        wire.setAttribute("d", "");
+        if (pulse) pulse.setAttribute("opacity", "0");
+        return;
+      }
       const from = emblemEdge(tip);
       const dx = tip.x - from.x;
       const dy = tip.y - from.y;
@@ -281,7 +279,7 @@ export function CinematicShowcase() {
     const ctx = gsap.context(() => {
       groups.forEach((nodes) => gsap.set(nodes, { autoAlpha: 0, y: 8 }));
       gsap.set(emblem, { autoAlpha: 0, scale: 0.88 });
-      gsap.set(cursor, { autoAlpha: 0, x: 20, y: 24, rotation: 0, transformOrigin: `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%` });
+      gsap.set(cursor, { autoAlpha: 0, x: 12, y: 18, rotation: 0, scale: 1, transformOrigin: tipOrigin });
       gsap.set(ripple, { autoAlpha: 0, scale: 0.4 });
       gsap.set(bars, { scaleY: 0, transformOrigin: "center bottom" });
       if (progress) gsap.set(progress, { scaleX: 0, transformOrigin: "left center" });
@@ -300,24 +298,35 @@ export function CinematicShowcase() {
       if (progress) tl.fromTo(progress, { scaleX: 0 }, { scaleX: 1, duration: BEAT * SCENES.length, ease: "none" }, 0);
 
       const visit = (id: string, at: number) => {
+        const hold = (prop: "x" | "y" | "rotation") => gsap.getProperty(cursor, prop) as number;
         tl.set(pulseState, { t: 0 }, at);
         tl.to(cursor, {
           autoAlpha: 1,
-          x: () => wrapperFor(id).x,
-          y: () => wrapperFor(id).y,
-          rotation: () => wrapperFor(id).rotation,
-          transformOrigin: `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%`,
+          x: () => wrapperFor(id)?.x ?? hold("x"),
+          y: () => wrapperFor(id)?.y ?? hold("y"),
+          rotation: () => wrapperFor(id)?.rotation ?? hold("rotation"),
+          scale: 1,
+          transformOrigin: tipOrigin,
           duration: TRAVEL,
           ease: "power2.inOut",
           onUpdate: syncWire,
         }, at);
         tl.to(pulseState, { t: 1, duration: TRAVEL, ease: "none", onUpdate: syncWire }, at);
+        tl.to(cursor, { scale: 0.86, duration: 0.06, transformOrigin: tipOrigin, ease: "power2.in" }, at + TRAVEL);
+        tl.to(cursor, { scale: 1, duration: 0.1, transformOrigin: tipOrigin, ease: "power2.out" }, at + TRAVEL + 0.06);
         tl.call(() => {
+          if (!featureTapPoint(id)) return;
           clearHot();
           targetEl(id)?.setAttribute("data-hot", "true");
           syncWire();
-        }, undefined, at + TRAVEL - 0.02);
-        tl.fromTo(ripple, { autoAlpha: 0.9, scale: 0.3 }, { autoAlpha: 0, scale: 1.6, duration: 0.16 }, at + TRAVEL - 0.02);
+        }, undefined, at + TRAVEL);
+        tl.fromTo(
+          `[data-target="${id}"]`,
+          { scale: 1 },
+          { scale: 1.025, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: "center center" },
+          at + TRAVEL,
+        );
+        tl.fromTo(ripple, { autoAlpha: 0.95, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.16, transformOrigin: "center center" }, at + TRAVEL);
       };
 
       groups.forEach((nodes, index) => {
@@ -358,7 +367,8 @@ export function CinematicShowcase() {
       const id = hot?.getAttribute("data-target");
       if (id && cursor) {
         const next = wrapperFor(id);
-        gsap.set(cursor, { x: next.x, y: next.y, rotation: next.rotation, transformOrigin: `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%` });
+        if (!next) return;
+        gsap.set(cursor, { x: next.x, y: next.y, rotation: next.rotation, transformOrigin: tipOrigin });
         syncWire();
       }
     };
