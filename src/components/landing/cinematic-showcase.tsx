@@ -4,7 +4,11 @@ import gsap from "gsap";
 import { AbosMark } from "@/components/landing/abos-mark";
 import { cn } from "@/lib/utils";
 
-const BEAT = 3.5;
+const BEAT = 2.1;
+const TRAVEL = 0.18;
+const LOOP_GAP = 0.2;
+const TIP_VB = { x: 5.2, y: 3.4 };
+const VB = 30;
 const SCENES = [
   { id: "01", name: "Customer signal" },
   { id: "02", name: "Customer 360" },
@@ -16,13 +20,13 @@ const SCENES = [
 ] as const;
 
 const MOVES: { id: string; at: number }[][] = [
-  [{ id: "enquiry", at: 0.45 }, { id: "context", at: 1.7 }],
-  [{ id: "profile", at: 0.4 }, { id: "catalogue", at: 1.7 }],
-  [{ id: "reply", at: 0.4 }, { id: "sources", at: 1.7 }],
-  [{ id: "stock", at: 0.4 }, { id: "draft", at: 1.7 }],
-  [{ id: "claim", at: 0.4 }, { id: "review", at: 1.7 }],
-  [{ id: "task", at: 0.4 }, { id: "delivery", at: 1.7 }],
-  [{ id: "customers", at: 0.35 }, { id: "commerce", at: 1.15 }, { id: "analytics", at: 1.95 }, { id: "finale", at: 2.55 }],
+  [{ id: "enquiry", at: 0.3 }, { id: "context", at: 1.05 }],
+  [{ id: "profile", at: 0.3 }, { id: "catalogue", at: 1.05 }],
+  [{ id: "reply", at: 0.3 }, { id: "sources", at: 1.05 }],
+  [{ id: "stock", at: 0.3 }, { id: "draft", at: 1.05 }],
+  [{ id: "claim", at: 0.3 }, { id: "review", at: 1.05 }],
+  [{ id: "task", at: 0.3 }, { id: "delivery", at: 1.05 }],
+  [{ id: "customers", at: 0.12 }, { id: "commerce", at: 0.55 }, { id: "analytics", at: 0.98 }, { id: "finale", at: 1.41 }],
 ];
 
 function readReducedMotion() {
@@ -33,6 +37,7 @@ function readReducedMotion() {
 function FloatCard({
   beat,
   target,
+  slot,
   className,
   kicker,
   title,
@@ -43,6 +48,7 @@ function FloatCard({
 }: {
   beat?: number;
   target: string;
+  slot?: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
   className?: string;
   kicker: string;
   title: string;
@@ -56,7 +62,7 @@ function FloatCard({
       data-cine="card"
       data-beat={beat}
       data-target={target}
-      className={cn("cine-glass cine-float", tone === "amber" && "border-amber-200/35", className)}
+      className={cn("cine-glass cine-float", slot && `cine-slot-${slot}`, tone === "amber" && "border-amber-200/35", className)}
     >
       <p className={cn("text-[9px] font-medium uppercase tracking-[0.14em] md:text-[10px]", tone === "amber" ? "text-amber" : "text-signal")}>{kicker}</p>
       <p className="mt-0.5 font-display text-[12px] font-semibold leading-snug text-harmattan md:text-sm">{title}</p>
@@ -185,47 +191,82 @@ export function CinematicShowcase() {
       const hw = Math.max(tr.width / 2, 1);
       const hh = Math.max(tr.height / 2, 1);
       const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh, 0.001);
-      return { x: cx + dx * Math.min(scale, 1) * 0.92, y: cy + dy * Math.min(scale, 1) * 0.92 };
+      return { x: cx + dx * Math.min(scale, 1) * 0.86, y: cy + dy * Math.min(scale, 1) * 0.86 };
     };
 
-    const tipFor = (id: string) => {
-      const el = targetEl(id);
+    const tipOffset = () => {
+      const svg = cursor?.querySelector("svg");
+      const box = svg?.getBoundingClientRect();
+      if (!box || box.width < 2) return { x: (TIP_VB.x / VB) * 26, y: (TIP_VB.y / VB) * 26 };
+      return { x: (TIP_VB.x / VB) * box.width, y: (TIP_VB.y / VB) * box.height };
+    };
+
+    const wrapperFor = (id: string) => {
+      const dest = (() => {
+        const el = targetEl(id);
+        return el ? cardAnchor(el) : { x: 24, y: 24 };
+      })();
+      const off = tipOffset();
       const sr = stage.getBoundingClientRect();
-      if (!el) return { x: 16, y: 16 };
-      const tr = el.getBoundingClientRect();
-      const e = emblemPoint();
-      const cx = tr.left - sr.left + tr.width / 2;
-      const onLeft = cx < e.x;
-      const x = onLeft ? tr.left - sr.left + 10 : tr.right - sr.left - 22;
-      const y = tr.top - sr.top + Math.min(18, tr.height * 0.35);
       return {
-        x: Math.max(2, Math.min(sr.width - 28, x)),
-        y: Math.max(4, Math.min(sr.height - 30, y)),
+        x: Math.max(0, Math.min(sr.width - 8, dest.x - off.x)),
+        y: Math.max(0, Math.min(sr.height - 8, dest.y - off.y)),
       };
+    };
+
+    const arrowhead = () => {
+      const svg = cursor?.querySelector("svg");
+      const sr = stage.getBoundingClientRect();
+      const box = svg?.getBoundingClientRect();
+      if (!box || box.width < 2) {
+        const off = tipOffset();
+        return { x: off.x, y: off.y };
+      }
+      return {
+        x: box.left - sr.left + (TIP_VB.x / VB) * box.width,
+        y: box.top - sr.top + (TIP_VB.y / VB) * box.height,
+      };
+    };
+
+    const emblemEdge = (tip: { x: number; y: number }) => {
+      const center = emblemPoint();
+      const box = emblem?.getBoundingClientRect();
+      const radius = box ? Math.min(box.width, box.height) * 0.46 : 28;
+      const dx = tip.x - center.x;
+      const dy = tip.y - center.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const reach = Math.min(radius, len * 0.92);
+      return { x: center.x + (dx / len) * reach, y: center.y + (dy / len) * reach };
+    };
+
+    const pulseState = { t: 0 };
+
+    const syncWire = () => {
+      if (!wire) return;
+      const tip = arrowhead();
+      const from = emblemEdge(tip);
+      const dx = tip.x - from.x;
+      const dy = tip.y - from.y;
+      const mx = from.x + dx * 0.5 - dy * 0.08;
+      const my = from.y + dy * 0.5 + dx * 0.08;
+      wire.setAttribute("d", `M ${from.x} ${from.y} Q ${mx} ${my} ${tip.x} ${tip.y}`);
+      const length = wire.getTotalLength();
+      if (pulse && length > 1) {
+        const point = wire.getPointAtLength(Math.max(0, Math.min(1, pulseState.t)) * length);
+        pulse.setAttribute("cx", String(point.x));
+        pulse.setAttribute("cy", String(point.y));
+        pulse.setAttribute("opacity", pulseState.t > 0.02 ? "1" : "0");
+      }
+    };
+
+    const hideWire = () => {
+      pulseState.t = 0;
+      if (wire) wire.setAttribute("d", "");
+      if (pulse) pulse.setAttribute("opacity", "0");
     };
 
     const clearHot = () => {
       stage.querySelectorAll<HTMLElement>("[data-hot]").forEach((node) => node.removeAttribute("data-hot"));
-    };
-
-    const drawWire = (id: string) => {
-      const el = targetEl(id);
-      if (!wire || !el) {
-        if (wire) wire.setAttribute("d", "");
-        if (pulse) pulse.setAttribute("opacity", "0");
-        return;
-      }
-      const from = emblemPoint();
-      const to = cardAnchor(el);
-      const mx = (from.x + to.x) / 2;
-      wire.setAttribute("d", `M ${from.x} ${from.y} Q ${mx} ${from.y} ${to.x} ${to.y}`);
-      const length = wire.getTotalLength();
-      if (pulse && length > 1) {
-        const point = wire.getPointAtLength(length * 0.62);
-        pulse.setAttribute("cx", String(point.x));
-        pulse.setAttribute("cy", String(point.y));
-        pulse.setAttribute("opacity", "1");
-      }
     };
 
     const ctx = gsap.context(() => {
@@ -240,42 +281,46 @@ export function CinematicShowcase() {
       const tl = gsap.timeline({
         paused: true,
         repeat: -1,
-        repeatDelay: 0.4,
+        repeatDelay: LOOP_GAP,
         defaults: { ease: "power2.out" },
       });
 
-      tl.to(emblem, { autoAlpha: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.05);
-      if (halo) tl.to(halo, { autoAlpha: 1, duration: 0.5 }, 0.05);
+      tl.to(emblem, { autoAlpha: 1, scale: 1, duration: 0.32, ease: "power3.out" }, 0.02);
+      if (halo) tl.to(halo, { autoAlpha: 1, duration: 0.24 }, 0.02);
       if (sweep) tl.to(sweep, { autoAlpha: 0.4, xPercent: 180, duration: BEAT * SCENES.length, ease: "none" }, 0);
       if (progress) tl.fromTo(progress, { scaleX: 0 }, { scaleX: 1, duration: BEAT * SCENES.length, ease: "none" }, 0);
 
       const visit = (id: string, at: number) => {
+        tl.set(pulseState, { t: 0 }, at);
         tl.to(cursor, {
           autoAlpha: 1,
-          x: () => tipFor(id).x,
-          y: () => tipFor(id).y,
-          duration: 0.5,
-          ease: "power3.inOut",
-          onUpdate: () => drawWire(id),
+          x: () => wrapperFor(id).x,
+          y: () => wrapperFor(id).y,
+          duration: TRAVEL,
+          ease: "power2.inOut",
+          onUpdate: syncWire,
         }, at);
+        tl.to(pulseState, { t: 1, duration: TRAVEL, ease: "none", onUpdate: syncWire }, at);
         tl.call(() => {
           clearHot();
-          const el = targetEl(id);
-          el?.setAttribute("data-hot", "true");
-          drawWire(id);
-        }, undefined, at + 0.48);
-        tl.fromTo(ripple, { autoAlpha: 0.85, scale: 0.35 }, { autoAlpha: 0, scale: 1.7, duration: 0.32 }, at + 0.48);
+          targetEl(id)?.setAttribute("data-hot", "true");
+          syncWire();
+        }, undefined, at + TRAVEL - 0.02);
+        tl.fromTo(ripple, { autoAlpha: 0.9, scale: 0.3 }, { autoAlpha: 0, scale: 1.6, duration: 0.16 }, at + TRAVEL - 0.02);
       };
 
       groups.forEach((nodes, index) => {
         const start = index * BEAT;
         tl.call(() => setSceneIndex(index), undefined, start);
-        tl.to(nodes, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.06 }, start + 0.12);
-        if (index === 6) tl.to(bars, { scaleY: 1, duration: 0.4, stagger: 0.04 }, start + 1.7);
+        tl.to(nodes, { autoAlpha: 1, y: 0, duration: 0.2, stagger: 0.03 }, start + 0.05);
+        if (index === 6) tl.to(bars, { scaleY: 1, duration: 0.22, stagger: 0.03 }, start + 0.9);
         MOVES[index]?.forEach((move) => visit(move.id, start + move.at));
-        tl.call(clearHot, undefined, start + BEAT - 0.38);
+        tl.call(() => {
+          clearHot();
+          hideWire();
+        }, undefined, start + BEAT - 0.2);
         if (index < groups.length - 1) {
-          tl.to(nodes, { autoAlpha: 0, duration: 0.28 }, start + BEAT - 0.32);
+          tl.to(nodes, { autoAlpha: 0, y: 6, duration: 0.16 }, start + BEAT - 0.18);
         }
       });
 
@@ -301,9 +346,9 @@ export function CinematicShowcase() {
       const hot = stage.querySelector<HTMLElement>("[data-hot]");
       const id = hot?.getAttribute("data-target");
       if (id && cursor) {
-        const next = tipFor(id);
+        const next = wrapperFor(id);
         gsap.set(cursor, { x: next.x, y: next.y });
-        drawWire(id);
+        syncWire();
       }
     };
     window.addEventListener("resize", onResize);
@@ -369,33 +414,30 @@ export function CinematicShowcase() {
 
         {reduced ? <Poster /> : (
           <>
-            <FloatCard beat={0} target="enquiry" className="left-[3%] top-[10%]" kicker="WhatsApp" title="New enquiry" detail="Hi, is this available in black? Can you deliver to Ikeja?" />
-            <FloatCard beat={0} target="context" className="bottom-[18%] right-[3%]" kicker="Context" title="Signal captured" detail="The person stays on the thread. Nothing is confirmed yet." status="Enquiry received" />
+            <FloatCard beat={0} target="enquiry" slot="nw" kicker="WhatsApp" title="New enquiry" detail="Hi, is this available in black? Can you deliver to Ikeja?" />
+            <FloatCard beat={0} target="context" slot="se" kicker="Context" title="Signal captured" detail="The person stays on the thread. Nothing is confirmed yet." status="Enquiry received" />
 
-            <FloatCard beat={1} target="profile" className="left-[3%] top-[10%]" kicker="Profile" title="Customer 360" detail="Prior thread: asked about the same item last week." />
-            <FloatCard beat={1} target="catalogue" className="right-[3%] bottom-[18%]" kicker="Catalogue" title="Matching product" detail="Black variant is the record on file. Availability is not assumed." />
+            <FloatCard beat={1} target="profile" slot="n" kicker="Profile" title="Customer 360" detail="Prior thread: asked about the same item last week." />
+            <FloatCard beat={1} target="catalogue" slot="sw" kicker="Catalogue" title="Matching product" detail="Black variant is the record on file. Availability is not assumed." />
 
-            <FloatCard beat={2} target="reply" className="left-[3%] top-[8%]" kicker="Grounded reply" title="Suggested response" detail="I found the matching catalogue item. I'm checking availability and delivery before I confirm." />
-            <FloatCard beat={2} target="sources" className="bottom-[18%] right-[3%]" kicker="Sources" title="Saved business information" detail="Customer context, catalogue, approved knowledge, and rules." status="Not invented" />
+            <FloatCard beat={2} target="reply" slot="e" kicker="Grounded reply" title="Suggested response" detail="I found the matching catalogue item. I'm checking availability and delivery before I confirm." />
+            <FloatCard beat={2} target="sources" slot="nw" kicker="Sources" title="Saved business information" detail="Customer context, catalogue, approved knowledge, and rules." status="Not invented" />
 
-            <FloatCard beat={3} target="stock" className="left-[3%] top-[10%]" kicker="Product match" title="Black variant" detail="The catalogue row is linked. Stock is still a check." status="Stock check required" />
-            <FloatCard beat={3} target="draft" className="right-[3%] bottom-[18%]" kicker="Order" title="Draft only" detail="The request can sit as a draft. It is not a confirmed order." status="Order draft" />
+            <FloatCard beat={3} target="stock" slot="ne" kicker="Product match" title="Black variant" detail="The catalogue row is linked. Stock is still a check." status="Stock check required" />
+            <FloatCard beat={3} target="draft" slot="s" kicker="Order" title="Draft only" detail="The request can sit as a draft. It is not a confirmed order." status="Order draft" />
 
-            <FloatCard beat={4} target="claim" className="left-[3%] top-[8%]" tone="amber" kicker="Payment" title="Transfer claim" detail="A customer says they sent money. That claim is not settlement." status="Transfer claim — pending verification" />
-            <FloatCard beat={4} target="review" className="bottom-[18%] right-[3%]" tone="amber" kicker="Human review" title="Held for an authorised person" detail="Manual transfers stay pending until someone authorised verifies them." status="Not settled" />
+            <FloatCard beat={4} target="claim" slot="w" tone="amber" kicker="Payment" title="Transfer claim" detail="A customer says they sent money. That claim is not settlement." status="Transfer claim — pending verification" />
+            <FloatCard beat={4} target="review" slot="se" tone="amber" kicker="Human review" title="Held for an authorised person" detail="Manual transfers stay pending until someone authorised verifies them." status="Not settled" />
 
-            <FloatCard beat={5} target="task" className="left-[3%] top-[10%]" kicker="Task" title="Assigned follow-up" detail="An owner or agent can take the next step. It does not run itself." status="Task assigned" />
-            <FloatCard beat={5} target="delivery" className="right-[3%] bottom-[18%]" kicker="Delivery" title="Preparation" detail="Handoff is required. No delivery time is promised." status="Delivery not confirmed" />
+            <FloatCard beat={5} target="task" slot="sw" kicker="Task" title="Assigned follow-up" detail="An owner or agent can take the next step. It does not run itself." status="Task assigned" />
+            <FloatCard beat={5} target="delivery" slot="n" kicker="Delivery" title="Preparation" detail="Handoff is required. No delivery time is promised." status="Delivery not confirmed" />
 
-            <FloatCard beat={6} target="customers" className="left-[3%] top-[8%]" kicker="Customers" title="Conversations" detail="The thread remains the source of the request." />
-            <FloatCard beat={6} target="commerce" className="right-[3%] top-[8%] hidden sm:block" kicker="Commerce" title="Products, orders, payments" detail="Catalogue, draft order, and unverified transfer stay distinct." />
-            <FloatCard beat={6} target="analytics" className="bottom-[22%] right-[3%] sm:bottom-[18%] sm:left-[3%] sm:right-auto" kicker="Analytics" title="Operating picture" status="Illustrative demo data">
+            <FloatCard beat={6} target="customers" slot="nw" kicker="Customers" title="Conversations" detail="The thread remains the source of the request." />
+            <FloatCard beat={6} target="commerce" slot="ne" kicker="Commerce" title="Products, orders, payments" detail="Catalogue, draft order, and unverified transfer stay distinct." />
+            <FloatCard beat={6} target="analytics" slot="sw" kicker="Analytics" title="Operating picture" status="Illustrative demo data">
               <MiniChart />
             </FloatCard>
-            <FloatCard beat={6} target="finale" className="bottom-[18%] right-[3%] hidden sm:block" kicker="ABOS" title="One business. One connected intelligence." detail="Knowledge, delivery, team, and tasks share this system." />
-            <p data-beat={6} data-cine="card" data-target="finale" className="pointer-events-none absolute inset-x-3 bottom-[6%] text-center font-display text-[11px] font-semibold leading-tight text-harmattan sm:hidden">
-              One business. One connected intelligence.
-            </p>
+            <FloatCard beat={6} target="finale" slot="se" kicker="ABOS" title="One business. One connected intelligence." detail="Knowledge, delivery, team, and tasks share this system." />
             <Pointer />
           </>
         )}
