@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 const BEAT = 2.1;
 const TRAVEL = 0.18;
 const LOOP_GAP = 0.2;
-const TIP_VB = { x: 5.2, y: 3.4 };
-const VB = 30;
+const TIP_VB = { x: 44, y: 24 };
+const VB = 48;
 const SCENES = [
   { id: "01", name: "Customer signal" },
   { id: "02", name: "Customer 360" },
@@ -66,10 +66,10 @@ function FloatCard({
     >
       <p className={cn("text-[9px] font-medium uppercase tracking-[0.14em] md:text-[10px]", tone === "amber" ? "text-amber" : "text-signal")}>{kicker}</p>
       <p className="mt-0.5 font-display text-[12px] font-semibold leading-snug text-harmattan md:text-sm">{title}</p>
-      {detail ? <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-harmattan-muted md:text-[11px]">{detail}</p> : null}
+      {detail ? <p className="mt-0.5 text-[11px] leading-snug text-harmattan-muted md:text-[11px]">{detail}</p> : null}
       {status ? (
         <p className={cn(
-          "mt-1 inline-flex rounded-full border px-1.5 py-0.5 text-[8px] uppercase tracking-[0.1em] md:text-[10px]",
+          "mt-1 inline-flex max-w-full whitespace-normal rounded-full border px-1.5 py-0.5 text-left text-[8px] uppercase leading-tight tracking-[0.08em] md:text-[10px]",
           tone === "amber" ? "border-amber-200/30 bg-amber-200/10 text-amber" : "border-white/10 bg-white/5 text-quiet",
         )}>
           {status}
@@ -103,13 +103,13 @@ function MiniChart() {
 function Pointer() {
   return (
     <div data-cine="cursor" className="cine-cursor" aria-hidden="true">
-      <svg width="26" height="26" viewBox="0 0 30 30" fill="none">
-        <path
-          d="M5.2 3.4 24.2 14.2c.86.48.66 1.76-.3 1.96l-7.15 1.55-1.72 7c-.22.9-1.46 1.02-1.86.16L4.4 5c-.3-.64.3-1.3.8-1.6Z"
-          fill="#f4fff9"
-          stroke="#6ee7b7"
-          strokeWidth="1.35"
-        />
+      <svg viewBox="0 0 48 48" className="h-full w-full" fill="none">
+        <path d="M6 30.5 18 24 6 17.5" stroke="#6ee7b7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 28.5 22 24 12 19.5" stroke="#a7f3d0" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M20 24h16" stroke="#6ee7b7" strokeWidth="2" strokeLinecap="round" />
+        <path d="M30 14.5 44 24 30 33.5c-.7.45-.2 1.55.7 1.45L34 24l-3.3-11.9c-.2-.9-1.4-1.05-1.7-.6Z" fill="#f7fff9" stroke="#04281c" strokeWidth="1.1" />
+        <path d="M33 24h7.5" stroke="#34d399" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="44" cy="24" r="1.3" fill="#d1fae5" />
       </svg>
       <span data-cine="ripple" className="cine-ripple" />
     </div>
@@ -183,49 +183,58 @@ export function CinematicShowcase() {
     const cardAnchor = (el: HTMLElement) => {
       const sr = stage.getBoundingClientRect();
       const tr = el.getBoundingClientRect();
-      const cx = tr.left - sr.left + tr.width / 2;
-      const cy = tr.top - sr.top + tr.height / 2;
+      const left = tr.left - sr.left;
+      const top = tr.top - sr.top;
+      const cx = left + tr.width / 2;
+      const cy = top + tr.height / 2;
       const e = emblemPoint();
-      const dx = e.x - cx;
-      const dy = e.y - cy;
-      const hw = Math.max(tr.width / 2, 1);
-      const hh = Math.max(tr.height / 2, 1);
-      const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh, 0.001);
-      return { x: cx + dx * Math.min(scale, 1) * 0.86, y: cy + dy * Math.min(scale, 1) * 0.86 };
+      const vx = e.x - cx;
+      const vy = e.y - cy;
+      const hx = Math.max(tr.width / 2, 1);
+      const hy = Math.max(tr.height / 2, 1);
+      const tx = Math.abs(vx) < 0.001 ? Infinity : hx / Math.abs(vx);
+      const ty = Math.abs(vy) < 0.001 ? Infinity : hy / Math.abs(vy);
+      const t = Math.min(tx, ty);
+      const bx = cx + vx * t;
+      const by = cy + vy * t;
+      const len = Math.hypot(vx, vy) || 1;
+      return { x: bx + (vx / len) * 5, y: by + (vy / len) * 5 };
     };
 
-    const tipOffset = () => {
-      const svg = cursor?.querySelector("svg");
-      const box = svg?.getBoundingClientRect();
-      if (!box || box.width < 2) return { x: (TIP_VB.x / VB) * 26, y: (TIP_VB.y / VB) * 26 };
-      return { x: (TIP_VB.x / VB) * box.width, y: (TIP_VB.y / VB) * box.height };
+    const aim = (id: string) => {
+      const el = targetEl(id);
+      const dest = el ? cardAnchor(el) : { x: 40, y: 40 };
+      const e = emblemPoint();
+      return { dest, rotation: (Math.atan2(dest.y - e.y, dest.x - e.x) * 180) / Math.PI };
     };
 
     const wrapperFor = (id: string) => {
-      const dest = (() => {
-        const el = targetEl(id);
-        return el ? cardAnchor(el) : { x: 24, y: 24 };
-      })();
-      const off = tipOffset();
+      const { dest } = aim(id);
+      const box = cursor?.getBoundingClientRect();
+      const w = box && box.width > 4 ? box.width : 36;
+      const h = box && box.height > 4 ? box.height : 36;
+      const ox = w * (TIP_VB.x / VB);
+      const oy = h * (TIP_VB.y / VB);
       const sr = stage.getBoundingClientRect();
       return {
-        x: Math.max(0, Math.min(sr.width - 8, dest.x - off.x)),
-        y: Math.max(0, Math.min(sr.height - 8, dest.y - off.y)),
+        x: Math.max(-ox, Math.min(sr.width - 4, dest.x - ox)),
+        y: Math.max(-oy, Math.min(sr.height - 4, dest.y - oy)),
+        rotation: aim(id).rotation,
       };
     };
 
     const arrowhead = () => {
       const svg = cursor?.querySelector("svg");
       const sr = stage.getBoundingClientRect();
-      const box = svg?.getBoundingClientRect();
-      if (!box || box.width < 2) {
-        const off = tipOffset();
-        return { x: off.x, y: off.y };
+      const ctm = svg?.getScreenCTM();
+      if (svg && ctm) {
+        const point = svg.createSVGPoint();
+        point.x = TIP_VB.x;
+        point.y = TIP_VB.y;
+        const screen = point.matrixTransform(ctm);
+        return { x: screen.x - sr.left, y: screen.y - sr.top };
       }
-      return {
-        x: box.left - sr.left + (TIP_VB.x / VB) * box.width,
-        y: box.top - sr.top + (TIP_VB.y / VB) * box.height,
-      };
+      return { x: 24, y: 24 };
     };
 
     const emblemEdge = (tip: { x: number; y: number }) => {
@@ -272,7 +281,7 @@ export function CinematicShowcase() {
     const ctx = gsap.context(() => {
       groups.forEach((nodes) => gsap.set(nodes, { autoAlpha: 0, y: 8 }));
       gsap.set(emblem, { autoAlpha: 0, scale: 0.88 });
-      gsap.set(cursor, { autoAlpha: 0, x: 20, y: 24 });
+      gsap.set(cursor, { autoAlpha: 0, x: 20, y: 24, rotation: 0, transformOrigin: `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%` });
       gsap.set(ripple, { autoAlpha: 0, scale: 0.4 });
       gsap.set(bars, { scaleY: 0, transformOrigin: "center bottom" });
       if (progress) gsap.set(progress, { scaleX: 0, transformOrigin: "left center" });
@@ -296,6 +305,8 @@ export function CinematicShowcase() {
           autoAlpha: 1,
           x: () => wrapperFor(id).x,
           y: () => wrapperFor(id).y,
+          rotation: () => wrapperFor(id).rotation,
+          transformOrigin: `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%`,
           duration: TRAVEL,
           ease: "power2.inOut",
           onUpdate: syncWire,
@@ -347,7 +358,7 @@ export function CinematicShowcase() {
       const id = hot?.getAttribute("data-target");
       if (id && cursor) {
         const next = wrapperFor(id);
-        gsap.set(cursor, { x: next.x, y: next.y });
+        gsap.set(cursor, { x: next.x, y: next.y, rotation: next.rotation, transformOrigin: `${(TIP_VB.x / VB) * 100}% ${(TIP_VB.y / VB) * 100}%` });
         syncWire();
       }
     };
@@ -383,27 +394,27 @@ export function CinematicShowcase() {
   const active = SCENES[sceneIndex] ?? SCENES[0];
 
   return (
-    <section id="showcase" className="relative z-10 mx-auto max-w-[1440px] px-4 py-6 sm:px-8 sm:py-10" aria-labelledby="showcase-title">
-      <div className="mx-auto mb-6 max-w-3xl text-center sm:mb-8">
+    <section id="showcase" className="relative z-10 mx-auto max-w-[1440px] px-4 py-4 sm:px-8 sm:py-10" aria-labelledby="showcase-title">
+      <div className="mx-auto mb-3 max-w-3xl text-center sm:mb-8">
         <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-signal">ABOS in motion</p>
-        <h2 id="showcase-title" className="mt-3 font-display text-title font-semibold text-harmattan">
+        <h2 id="showcase-title" className="mt-2 font-display text-title font-semibold text-harmattan sm:mt-3">
           One business. One connected intelligence.
         </h2>
-        <p className="mt-3 text-sm text-harmattan-muted sm:text-base">
+        <p className="mt-2 text-sm text-harmattan-muted sm:mt-3 sm:text-base">
           Illustrative product preview. Not live traffic, stock, or payment activity.
         </p>
       </div>
 
       <div
         ref={stageRef}
-        className="cine-stage relative mx-auto aspect-video w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)]"
+        className="cine-stage cine-stage-frame relative mx-auto w-full max-w-[1360px] overflow-hidden rounded-[28px] border border-white/10 bg-[#05090c] shadow-[0_30px_80px_-48px_rgba(110,231,183,0.45)]"
       >
         <div className="cine-grid absolute inset-0" aria-hidden="true" />
         <div className="cine-glow absolute inset-0" aria-hidden="true" />
         <div data-cine="sweep" className="cine-sweep" aria-hidden="true" />
-        <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full" aria-hidden="true">
-          <path data-cine="wire" fill="none" stroke="rgba(110,231,183,0.85)" strokeWidth="1.35" strokeLinecap="round" />
-          <circle data-cine="pulse" r="3" fill="#d1fae5" opacity="0" />
+        <svg className="cine-wire pointer-events-none absolute inset-0 z-[1] h-full w-full" aria-hidden="true">
+          <path data-cine="wire" fill="none" stroke="#34d399" strokeWidth="2.4" strokeLinecap="round" />
+          <circle data-cine="pulse" r="3.5" fill="#ecfdf5" opacity="0" />
         </svg>
         <div data-cine="halo" className="cine-halo" aria-hidden="true" />
         <div className="pointer-events-none absolute left-1/2 top-[46%] z-[2] -translate-x-1/2 -translate-y-1/2">
@@ -442,16 +453,13 @@ export function CinematicShowcase() {
           </>
         )}
 
-        <p className="pointer-events-none absolute left-2 top-2 z-[4] rounded-full border border-white/10 bg-black/50 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-harmattan-muted md:left-3 md:top-3 md:text-[10px]">
-          Illustrative product preview
+        <p className="pointer-events-none absolute left-1/2 top-2 z-[4] max-w-[92%] -translate-x-1/2 truncate rounded-full border border-white/10 bg-black/55 px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-harmattan md:text-[10px]">
+          {reduced ? "Illustrative still" : `${active.id} / 07 · ${active.name}`}
         </p>
         {reduced ? null : (
           <>
-            <p className="absolute right-2 top-2 z-[4] max-w-[46%] truncate rounded-full border border-white/10 bg-black/50 px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-harmattan md:right-3 md:top-3 md:text-[10px]">
-              {active.id}/07 {active.name}
-            </p>
             <div data-cine="progress" className="absolute inset-x-0 bottom-0 z-[3] h-[2px] origin-left bg-signal/80" />
-            <div className="absolute bottom-2 right-2 z-[5] flex gap-1.5">
+            <div className="cine-dock absolute bottom-2 left-1/2 z-[5] flex -translate-x-1/2 gap-1.5">
               <button type="button" onClick={togglePause} aria-pressed={paused} aria-label={paused ? "Play product preview" : "Pause product preview"} className="grid size-8 place-items-center rounded-full border border-white/15 bg-black/60 text-harmattan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6ee7b7] md:size-10">
                 {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
               </button>
